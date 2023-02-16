@@ -75,19 +75,32 @@ public class WarehouseScraper
             }
             catch (System.ArgumentNullException)
             {
-                log(ConsoleColor.Red, "Error Connecting to CosmosDB - make sure env variables are set:\n");
+                log(ConsoleColor.Red, "Error connecting to CosmosDB - make sure env variables are set:\n");
                 Console.WriteLine("$env:COSMOS_ENDPOINT = \"<cosmos-account-URI>\"");
                 Console.WriteLine("$env:COSMOS_KEY = \"<cosmos-account-PRIMARY-KEY>\"\n");
-                await browser.CloseAsync();
-                return;
+            }
+            catch (System.FormatException)
+            {
+                log(ConsoleColor.Red, "Error connecting to CosmosDB - make sure env variables are set:\n");
+                Console.WriteLine("$env:COSMOS_ENDPOINT = \"<cosmos-account-URI>\"");
+                Console.WriteLine("$env:COSMOS_KEY = \"<cosmos-account-PRIMARY-KEY>\"\n");
+            }
+            catch (Exception e)
+            {
+                Console.Write(e.ToString());
             }
         }
 
-        // Open up each URL and run the scraping function
-        await openEachURLForScraping(urls, page, cosmosContainer!);
+        if (cosmosContainer != null)
+        {
+            // Open up each URL and run the scraping function
+            await openEachURLForScraping(urls, page, cosmosContainer!);
 
-        // Complete after all URLs have been scraped
-        log(ConsoleColor.Blue, "\nScraping Completed \n");
+            // Complete after all URLs have been scraped
+            log(ConsoleColor.Blue, "\nScraping Completed \n");
+        }
+
+        // Clean up playwright browser and end program
         await browser.CloseAsync();
         return;
     }
