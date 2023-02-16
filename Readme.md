@@ -1,6 +1,8 @@
 # The Warehouse Scraper
 
-Scrapes product pricing and info from The Warehouse NZ website. Price snapshots can be saved to a database, or this program can simply log to console.
+Scrapes product pricing and info from The Warehouse NZ website. Price snapshots can be saved to CosmosDB, or this program can simply log to console.
+
+Requires .NET 6 & Powershell. Azure CosmosDB is optional.
 
 ## Setup
 
@@ -10,10 +12,10 @@ First clone this repo, then restore .NET packages and build the project with:
 dotnet restore && dotnet build
 ```
 
-Playwright web browsers must be downloaded and installed using:
+Playwright Chromium web browser must be downloaded and installed using:
 
 ```powershell
-pwsh bin/Debug/net6.0/playwright.ps1 install
+pwsh bin/Debug/net6.0/playwright.ps1 install chromium
 ```
 
 If running in dry mode, the program is now ready to use.
