@@ -34,9 +34,13 @@ public class WarehouseScraper
     static Database? database;
     static Container? cosmosContainer;
 
-    public static async Task Main()
+    public static async Task Main(string[] args)
     {
-        urls = cleanAndParseURLs(urls);
+        // Handle arguments - 'dotnet run dry' will run in dry mode
+        if (args.Length > 0)
+        {
+            if (args[0] == "dry") dryRunMode = true;
+        }
 
         // Launch Playwright Headless Browser
         using var playwright = await Playwright.CreateAsync();
