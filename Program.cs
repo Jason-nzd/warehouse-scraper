@@ -73,12 +73,13 @@ public class WarehouseScraper
 
                 log(ConsoleColor.Yellow, $"\n(Connected to CosmosDB) {cosmosClient.Endpoint}");
             }
-            catch (System.Exception)
+            catch (System.ArgumentNullException)
             {
-                log(ConsoleColor.Red, "Error Connecting to CosmosDB - make sure env variables are set:");
+                log(ConsoleColor.Red, "Error Connecting to CosmosDB - make sure env variables are set:\n");
                 Console.WriteLine("$env:COSMOS_ENDPOINT = \"<cosmos-account-URI>\"");
-                Console.WriteLine("$env:COSMOS_KEY = \"<cosmos-account-PRIMARY-KEY>\"");
-                throw;
+                Console.WriteLine("$env:COSMOS_KEY = \"<cosmos-account-PRIMARY-KEY>\"\n");
+                await browser.CloseAsync();
+                return;
             }
         }
 
@@ -153,9 +154,9 @@ public class WarehouseScraper
                 {
                     // In Dry Run mode, print a log row for every product
                     Console.WriteLine(
-                        scrapedProduct.id.PadLeft(8) + "   " +
-                        scrapedProduct.name!.PadRight(50).Substring(0, 50) + "\t" +
-                        "$" + scrapedProduct.currentPrice + "\t"
+                        scrapedProduct.id.PadLeft(9) + " | " +
+                        scrapedProduct.name!.PadRight(50).Substring(0, 50) + " | " +
+                        "$" + scrapedProduct.currentPrice
                     );
                 }
             }
