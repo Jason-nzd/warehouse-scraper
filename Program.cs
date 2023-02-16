@@ -102,9 +102,10 @@ public class WarehouseScraper
                 await page.GotoAsync(url);
                 await page.WaitForSelectorAsync("div.price-lockup-wrapper");
             }
-            catch (System.Exception)
+            catch (System.Exception e)
             {
-                log(ConsoleColor.Red, "Unable to load web page");
+                log(ConsoleColor.Red, "Unable to Load Web Page");
+                Console.Write(e.ToString());
                 return;
             }
 

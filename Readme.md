@@ -2,11 +2,11 @@
 
 Scrapes product pricing and info from The Warehouse NZ website. Price snapshots can be saved to CosmosDB, or this program can simply log to console.
 
-Requires .NET 6 & Powershell. Azure CosmosDB is optional.
+Requires .NET 6 SDK & Powershell. Azure CosmosDB is optional.
 
 ## Setup
 
-First clone this repo, then restore .NET packages and build the project with:
+First clone this repo, then restore and build .NET packages with:
 
 ```powershell
 dotnet restore && dotnet build
@@ -14,7 +14,7 @@ dotnet restore && dotnet build
 
 Playwright Chromium web browser must be downloaded and installed using:
 
-```powershell
+```cmd
 pwsh bin/Debug/net6.0/playwright.ps1 install chromium
 ```
 
