@@ -75,7 +75,9 @@ public class WarehouseScraper
             }
             catch (System.Exception)
             {
-                log(ConsoleColor.Red, "Error connecting to CosmosDB");
+                log(ConsoleColor.Red, "Error Connecting to CosmosDB - make sure env variables are set:");
+                Console.WriteLine("$env:COSMOS_ENDPOINT = \"<cosmos-account-URI>\"");
+                Console.WriteLine("$env:COSMOS_KEY = \"<cosmos-account-PRIMARY-KEY>\"");
                 throw;
             }
         }
@@ -98,7 +100,7 @@ public class WarehouseScraper
             // Try load page and wait for full page to dynamically load in
             try
             {
-                log(ConsoleColor.Yellow, $"\nLoading Page [{urlIndex++}/{urls.Count()}] {url.PadRight(112).Substring(12, 112)}");
+                log(ConsoleColor.Yellow, $"\nLoading Page [{urlIndex++}/{urls.Count()}] {url.PadRight(112).Substring(12, 100)}");
                 await page.GotoAsync(url);
                 await page.WaitForSelectorAsync("div.price-lockup-wrapper");
             }
