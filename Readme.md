@@ -20,11 +20,13 @@ pwsh bin/Debug/net6.0/playwright.ps1 install chromium
 
 If running in dry mode, the program is now ready to use.
 
-If using CosmosDB, then 2 environment variables need to be set:
+If using CosmosDB, create `appsettings.json` containing the endpoint and key using the format:
 
-```powershell
-$env:COSMOS_ENDPOINT = "<cosmos-account-URI>"
-$env:COSMOS_KEY = "<cosmos-account-PRIMARY-KEY>"
+```json
+{
+  "COSMOS_ENDPOINT": "<your cosmosdb endpoint uri>",
+  "COSMOS_KEY": "<your cosmosdb primary key>"
+}
 ```
 
 ## Usage

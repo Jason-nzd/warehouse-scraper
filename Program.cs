@@ -1,5 +1,6 @@
 ﻿using Microsoft.Playwright;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Configuration;
 
 // Warehouse Scraper
 // Scrapes product info and pricing from The Warehouse NZ's website.
@@ -42,24 +43,23 @@ public class WarehouseScraper
             if (args[0] == "dry") dryRunMode = true;
         }
 
-        // Launch Playwright Headless Browser
-        using var playwright = await Playwright.CreateAsync();
-        await using var browser = await playwright.Chromium.LaunchAsync(
-            new BrowserTypeLaunchOptions { Headless = true }
-        );
-        var page = await browser.NewPageAsync();
-
         // If dry run mode on, skip CosmosDB
         if (dryRunMode) log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
 
-        // If not in dry run mode, establish CosmosDB connections
+        // If not in dry run mode, establish CosmosDB connection
         else if (!dryRunMode)
         {
             try
             {
+                // Read from appsettings.json or appsettings.local.json
+                IConfiguration config = new ConfigurationBuilder()
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                    .AddEnvironmentVariables()
+                    .Build();
+
                 cosmosClient = new CosmosClient(
-                    accountEndpoint: Environment.GetEnvironmentVariable("COSMOS_ENDPOINT")!,
-                    authKeyOrResourceToken: Environment.GetEnvironmentVariable("COSMOS_KEY")!
+                    accountEndpoint: config.GetRequiredSection("COSMOS_ENDPOINT").Get<string>(),
+                    authKeyOrResourceToken: config.GetRequiredSection("COSMOS_KEY").Get<string>()!
                 );
 
                 database = cosmosClient.GetDatabase(id: "supermarket-prices");
@@ -73,23 +73,30 @@ public class WarehouseScraper
 
                 log(ConsoleColor.Yellow, $"\n(Connected to CosmosDB) {cosmosClient.Endpoint}");
             }
-            catch (System.ArgumentNullException)
+            catch (Microsoft.Azure.Cosmos.CosmosException e)
             {
-                log(ConsoleColor.Red, "Error connecting to CosmosDB - make sure env variables are set:\n");
-                Console.WriteLine("$env:COSMOS_ENDPOINT = \"<cosmos-account-URI>\"");
-                Console.WriteLine("$env:COSMOS_KEY = \"<cosmos-account-PRIMARY-KEY>\"\n");
-            }
-            catch (System.FormatException)
-            {
-                log(ConsoleColor.Red, "Error connecting to CosmosDB - make sure env variables are set:\n");
-                Console.WriteLine("$env:COSMOS_ENDPOINT = \"<cosmos-account-URI>\"");
-                Console.WriteLine("$env:COSMOS_KEY = \"<cosmos-account-PRIMARY-KEY>\"\n");
+                log(ConsoleColor.Red, e.GetType().ToString());
+                log(ConsoleColor.Red, "Error Connecting to CosmosDB - check appsettings.json, endpoint or key may be expired");
             }
             catch (Exception e)
             {
-                Console.Write(e.ToString());
+                log(ConsoleColor.Red, e.GetType().ToString());
+                log(ConsoleColor.Red, "Error Connecting to CosmosDB - make sure appsettings.json is created and contains:");
+                Console.Write(
+                "{\n" +
+                "\t\"COSMOS_ENDPOINT\": \"<your cosmosdb endpoint uri>\",\n" +
+                "\t\"COSMOS_KEY\": \"<your cosmosdb primary key>\"\n" +
+                "}\n\n"
+                );
             }
         }
+
+        // Launch Playwright Headless Browser
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(
+            new BrowserTypeLaunchOptions { Headless = true }
+        );
+        var page = await browser.NewPageAsync();
 
         if (cosmosContainer != null)
         {
@@ -127,7 +134,7 @@ public class WarehouseScraper
 
             // Query all product card entries
             var productElements = await page.QuerySelectorAllAsync("div.product-tile");
-            Console.WriteLine(productElements.Count.ToString() + " products found");
+            Console.WriteLine(productElements.Count.ToString().PadLeft(15) + " products found");
 
             // Create counters for logging purposes
             int newProductsCount = 0, updatedProductsCount = 0, upToDateProductsCount = 0;
@@ -184,7 +191,7 @@ public class WarehouseScraper
             // This page has now completed scraping. A delay is added in-between each subsequent URL
             if (urlIndex != urls.Count())
             {
-                log(ConsoleColor.Blue, $"Waiting {secondsDelayBetweenPageScrapes}s until next page scrape..");
+                Console.WriteLine($"{"Waiting".PadLeft(15)} {secondsDelayBetweenPageScrapes}s until next page scrape..");
                 Thread.Sleep(secondsDelayBetweenPageScrapes * 1000);
             }
         }
