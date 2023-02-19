@@ -98,21 +98,50 @@ public class WarehouseScraper
         );
         var page = await browser.NewPageAsync();
 
-        if (cosmosContainer != null)
-        {
-            // Open up each URL and run the scraping function
-            await openEachURLForScraping(urls, page, cosmosContainer!);
+        // Define unnecessary types and ad/tracking urls to reject
+        string[] typeExclusions = { "image", "stylesheet", "media", "font", "other" };
+        string[] urlExclusions = { "googleoptimize.com", "gtm.js", "visitoridentification.js", "js-agent.newrelic.com",
+            "cquotient.com", "googletagmanager.com", "cloudflareinsights.com", "dwanalytics", "edge.adobedc.net" };
+        List<string> exclusions = urlExclusions.ToList<string>();
 
-            // Complete after all URLs have been scraped
-            log(ConsoleColor.Blue, "\nScraping Completed \n");
-        }
+        // Route with exclusions processed
+        await page.RouteAsync("**/*", async route =>
+        {
+            var req = route.Request;
+            bool excludeThisRequest = false;
+            string trimmedUrl = req.Url.Length > 120 ? req.Url.Substring(0, 120) + "..." : req.Url;
+
+            foreach (string exclusion in exclusions)
+            {
+                if (req.Url.Contains(exclusion)) excludeThisRequest = true;
+            }
+
+            if (typeExclusions.Contains(req.ResourceType)) excludeThisRequest = true;
+
+            if (excludeThisRequest)
+            {
+                log(ConsoleColor.Red, $"{req.Method} {req.ResourceType} - {trimmedUrl}");
+                await route.AbortAsync();
+            }
+            else
+            {
+                //log(ConsoleColor.White, $"{req.Method} {req.ResourceType} - {trimmedUrl}");
+                await route.ContinueAsync();
+            }
+        });
+
+        // Open up each URL and run the scraping function
+        await openEachURLForScraping(urls, page);
+
+        // Complete after all URLs have been scraped
+        log(ConsoleColor.Blue, "\nScraping Completed \n");
 
         // Clean up playwright browser and end program
         await browser.CloseAsync();
         return;
     }
 
-    async static Task openEachURLForScraping(string[] urls, IPage page, Container cosmosContainer)
+    async static Task openEachURLForScraping(string[] urls, IPage page)
     {
         int urlIndex = 1;
 
@@ -351,4 +380,40 @@ public class WarehouseScraper
         Console.WriteLine(text);
         Console.ForegroundColor = ConsoleColor.White;
     }
+
+    // static void establishConnectionToAzureStorage(){
+    //     try
+    //     {
+    //         // Read from appsettings.json
+    //         IConfiguration config = new ConfigurationBuilder()
+    //             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    //             .AddEnvironmentVariables()
+    //             .Build();
+
+    //         const blobServiceClient = new BlobServiceClient(
+    //             config.GetRequiredSection("AZURE_STORAGE_CONSTRING").Get<string>()
+    //             );
+    //         string containerName = "warehouseimages";
+    //         BlobContainerClient containerClient = await blobServiceClient.CreateBlobContainerAsync(containerName);
+
+    //         log(ConsoleColor.Yellow, $"\n(Connected to Azure Storage) {blobServiceClient.Endpoint}");
+    //     }
+    //     catch (Exception e)
+    //     {
+    //         log(ConsoleColor.Red, e.GetType().ToString());
+    //         log(ConsoleColor.Red, "Error Connecting to Azure Storage - make sure appsettings.json is created and contains:");
+    //         Console.Write(
+    //         "{\n" +
+    //         "\t\"AZURE_STORAGE_CONSTRING\": \"<azure storage connection string>\",\n" +
+    //         "}\n\n"
+    //         );
+    //     }
+    // }
+
+    // static void uploadImageToAzureStorage(string id, string url){
+
+    //     string fileName = id + ".jpg";
+    //     BlobClient blobClient = containerClient.GetBlobClient(fileName);
+    //     await blobClient.UploadAsync();
+    // }
 }
