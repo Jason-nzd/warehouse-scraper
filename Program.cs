@@ -21,7 +21,7 @@ public class WarehouseScraper
         };
 
     public record DatedPrice(string date, float price);
-    public record Product(string id, string name, float currentPrice, string sourceSite, DatedPrice[] priceHistory, string imgUrl);
+    public record Product(string id, string name, float currentPrice, string[] category, string sourceSite, DatedPrice[] priceHistory, string imgUrl);
 
     enum UpsertResponse
     {
@@ -37,17 +37,18 @@ public class WarehouseScraper
 
     public static async Task Main(string[] args)
     {
-        // Handle arguments - 'dotnet run dry' will run in dry mode
+        // Handle arguments - 'dotnet run dry' will run in dry mode bypassing CosmosDB
         if (args.Length > 0)
         {
-            if (args[0] == "dry") dryRunMode = true;
+            if (args[0] == "dry")
+            {
+                dryRunMode = true;
+                log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
+            }
         }
 
-        // If dry run mode on, skip CosmosDB
-        if (dryRunMode) log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
-
         // If not in dry run mode, establish CosmosDB connection
-        else if (!dryRunMode)
+        if (!dryRunMode)
         {
             try
             {
@@ -66,7 +67,7 @@ public class WarehouseScraper
 
                 // Container reference with creation if it does not already exist
                 cosmosContainer = await database.CreateContainerIfNotExistsAsync(
-                    id: "warehouse-products",
+                    id: "supermarket-products",
                     partitionKeyPath: "/name",
                     throughput: 400
                 );
@@ -120,7 +121,7 @@ public class WarehouseScraper
 
             if (excludeThisRequest)
             {
-                log(ConsoleColor.Red, $"{req.Method} {req.ResourceType} - {trimmedUrl}");
+                //log(ConsoleColor.Red, $"{req.Method} {req.ResourceType} - {trimmedUrl}");
                 await route.AbortAsync();
             }
             else
@@ -163,7 +164,7 @@ public class WarehouseScraper
 
             // Query all product card entries
             var productElements = await page.QuerySelectorAllAsync("div.product-tile");
-            Console.WriteLine(productElements.Count.ToString().PadLeft(15) + " products found");
+            log(ConsoleColor.Yellow, productElements.Count.ToString().PadLeft(12) + " products found");
 
             // Create counters for logging purposes
             int newProductsCount = 0, updatedProductsCount = 0, upToDateProductsCount = 0;
@@ -172,7 +173,7 @@ public class WarehouseScraper
             foreach (var element in productElements)
             {
                 // Create Product object from playwright element
-                Product scrapedProduct = await scrapeProductElementToRecord(element);
+                Product scrapedProduct = await scrapeProductElementToRecord(element, url);
 
                 if (!dryRunMode)
                 {
@@ -205,7 +206,7 @@ public class WarehouseScraper
                     Console.WriteLine(
                         scrapedProduct.id.PadLeft(9) + " | " +
                         scrapedProduct.name!.PadRight(50).Substring(0, 50) + " | " +
-                        "$" + scrapedProduct.currentPrice
+                        "$" + scrapedProduct.currentPrice + "\t| " + scrapedProduct.category.Last()
                     );
                 }
             }
@@ -231,7 +232,7 @@ public class WarehouseScraper
 
     // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
     //  and then returns a completed Product record
-    async static Task<Product> scrapeProductElementToRecord(IElementHandle element)
+    async static Task<Product> scrapeProductElementToRecord(IElementHandle element, string url)
     {
         // Name
         var aTag = await element.QuerySelectorAsync("a.link");
@@ -254,6 +255,9 @@ public class WarehouseScraper
         // Source Website
         string sourceSite = "thewarehouse.co.nz";
 
+        // Categories
+        string[]? categories = deriveCategoriesFromUrl(url);
+
         // DatedPrice with date format 'Tue Jan 14 2023'
         string todaysDate = DateTime.Now.ToString("ddd MMM dd yyyy");
         DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
@@ -262,7 +266,7 @@ public class WarehouseScraper
         DatedPrice[] priceHistory = new DatedPrice[] { todaysDatedPrice };
 
         // Return completed Product record
-        return (new Product(id, name!, currentPrice, sourceSite, priceHistory, imgUrl!));
+        return (new Product(id, name!, currentPrice, categories!, sourceSite, priceHistory, imgUrl!));
     }
 
     // Takes a scraped Product, and tries to insert or update an existing Product on CosmosDB
@@ -293,8 +297,9 @@ public class WarehouseScraper
         {
             // Check if price has changed
             float dbPrice = dbProduct!.currentPrice;
-            float newPrice = scrapedProduct.currentPrice;
-            if (dbPrice != newPrice)
+            float scrapedPrice = scrapedProduct.currentPrice;
+
+            if (dbPrice != scrapedPrice)
             {
                 // Price has changed, so we can create an updated Product with the changes
                 DatedPrice[] updatedHistory = dbProduct.priceHistory;
@@ -304,13 +309,14 @@ public class WarehouseScraper
                     dbProduct.id,
                     dbProduct.name,
                     scrapedProduct.currentPrice,
+                    scrapedProduct.category,
                     dbProduct.sourceSite,
                     updatedHistory,
                     dbProduct.imgUrl
                 );
 
                 // Log price change with different verb and colour depending on price change direction
-                bool priceTrendingDown = (newPrice < dbPrice);
+                bool priceTrendingDown = (scrapedPrice < dbPrice);
                 string priceTrendText = "Price " + (priceTrendingDown ? "Decreased" : "Increased").PadLeft(15);
 
                 log(priceTrendingDown ? ConsoleColor.Green : ConsoleColor.Red,
@@ -379,6 +385,27 @@ public class WarehouseScraper
         Console.ForegroundColor = color;
         Console.WriteLine(text);
         Console.ForegroundColor = ConsoleColor.White;
+    }
+
+    // Derives food category names from url, if any categories are available
+    // www.domain.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk
+    // returns '[pantry, milk-bread, milk]'
+    static string[]? deriveCategoriesFromUrl(string url)
+    {
+        // If url doesn't contain /browse/, return no category
+        if (url.IndexOf("/food-drink/") < 0) return null;
+
+        int categoriesStartIndex = url.IndexOf("/food-drink/");
+        int categoriesEndIndex = url.Contains("?") ? url.IndexOf("?") : url.Length;
+        string categoriesString = url.Substring(categoriesStartIndex, categoriesEndIndex - categoriesStartIndex);
+        string[] splitCategories = categoriesString.Split("/").Skip(2).ToArray();
+
+        // foreach (string item in splitCategories)
+        // {
+        //     log(ConsoleColor.DarkGreen, item);
+        // }
+
+        return splitCategories;
     }
 
     // static void establishConnectionToAzureStorage(){
