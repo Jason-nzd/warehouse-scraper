@@ -6,7 +6,11 @@ namespace WarehouseScraper
 {
     public partial class CosmosDB
     {
-        public static async Task<Boolean> establishConnection(string databaseName, string partitionKey, string containerName)
+        public static async Task<Boolean> EstablishConnection(
+            string databaseName,
+            string partitionKey,
+            string containerName
+        )
         {
             try
             {
@@ -30,29 +34,29 @@ namespace WarehouseScraper
                     throughput: 400
                 );
 
-                log(ConsoleColor.Yellow, $"\n(Connected to CosmosDB) {cosmosClient.Endpoint}");
+                Log(ConsoleColor.Yellow, $"\n(Connected to CosmosDB) {cosmosClient.Endpoint}");
                 return true;
             }
             catch (Microsoft.Azure.Cosmos.CosmosException e)
             {
-                log(ConsoleColor.Red, e.GetType().ToString());
-                log(ConsoleColor.Red,
+                Log(ConsoleColor.Red, e.GetType().ToString());
+                Log(ConsoleColor.Red,
                 "Error Connecting to CosmosDB - check appsettings.json, endpoint or key may be expired");
                 return false;
             }
             catch (HttpRequestException e)
             {
-                log(ConsoleColor.Red, e.GetType().ToString());
-                log(ConsoleColor.Red,
+                Log(ConsoleColor.Red, e.GetType().ToString());
+                Log(ConsoleColor.Red,
                 "Error Connecting to CosmosDB - check firewall and internet status");
                 return false;
             }
             catch (Exception e)
             {
-                log(ConsoleColor.Red, e.GetType().ToString());
-                log(ConsoleColor.Red,
+                Log(ConsoleColor.Red, e.GetType().ToString());
+                Log(ConsoleColor.Red,
                 "Error Connecting to CosmosDB - make sure appsettings.json is created and contains:");
-                log(ConsoleColor.White,
+                Log(ConsoleColor.White,
                     "{\n" +
                     "\t\"COSMOS_ENDPOINT\": \"<your cosmosdb endpoint uri>\",\n" +
                     "\t\"COSMOS_KEY\": \"<your cosmosdb primary key>\"\n" +
@@ -63,7 +67,7 @@ namespace WarehouseScraper
         }
 
         // Takes a scraped Product, and tries to insert or update an existing Product on CosmosDB
-        public async static Task<UpsertResponse> upsertProduct(Product scrapedProduct)
+        public async static Task<UpsertResponse> UpsertProduct(Product scrapedProduct)
         {
             bool productAlreadyOnCosmosDB = false;
             Product? dbProduct = null;
@@ -103,7 +107,6 @@ namespace WarehouseScraper
                         dbProduct.name,
                         scrapedProduct.currentPrice,
                         dbProduct.category,
-                        dbProduct.size,
                         dbProduct.sourceSite,
                         updatedHistory,
                         dbProduct.imgUrl
@@ -111,9 +114,9 @@ namespace WarehouseScraper
 
                     // Log price change with different verb and colour depending on price change direction
                     bool priceTrendingDown = (scrapedPrice < dbPrice);
-                    string priceTrendText = "Price " + (priceTrendingDown ? "Decreased" : "Increased").PadLeft(15);
+                    string priceTrendText = "Price " + (priceTrendingDown ? "Decreased" : "Increased") + ":";
 
-                    log(priceTrendingDown ? ConsoleColor.Green : ConsoleColor.Red,
+                    Log(priceTrendingDown ? ConsoleColor.Green : ConsoleColor.Red,
                         $"{priceTrendText} {dbProduct.name.PadRight(40).Substring(0, 40)} from " +
                         $"${dbProduct.currentPrice} to ${scrapedProduct.currentPrice}"
                     );
@@ -145,7 +148,7 @@ namespace WarehouseScraper
                     Console.WriteLine(
                         $"{"New Product:".PadLeft(15)} {scrapedProduct.id.PadRight(8)} | " +
                         $"{scrapedProduct.name!.PadRight(40).Substring(0, 40)}" +
-                        $" | ${scrapedProduct.currentPrice}\t\t| {scrapedProduct.category.Last()}"
+                        $" | $ {scrapedProduct.currentPrice.ToString().PadLeft(5)} | {scrapedProduct.category.Last()}"
                     );
 
                     return UpsertResponse.NewProduct;
@@ -154,6 +157,22 @@ namespace WarehouseScraper
                 {
                     Console.WriteLine($"{"CosmosDB:".PadLeft(15)} Upsert Error for new Product: {e.StatusCode}");
                     return UpsertResponse.Failed;
+                }
+            }
+        }
+
+        public static async Task CustomQuery()
+        {
+            var feedIterator = cosmosContainer!.GetItemQueryIterator<Product>(
+                "select * from products p where contains(p.id, 'M')"
+            );
+
+            while (feedIterator.HasMoreResults)
+            {
+                foreach (var item in await feedIterator.ReadNextAsync())
+                {
+                    Console.WriteLine($"Deleting {item.id} - {item.name}");
+                    await cosmosContainer.DeleteItemAsync<Product>(item.id, new PartitionKey(item.name));
                 }
             }
         }
