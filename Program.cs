@@ -1,5 +1,6 @@
 ﻿using Microsoft.Playwright;
 using Microsoft.Azure.Cosmos;
+using System.Text.RegularExpressions;
 
 // Warehouse Scraper
 // Scrapes product info and pricing from The Warehouse NZ's website.
@@ -9,7 +10,7 @@ namespace WarehouseScraper
 {
     public class Program
     {
-        static int secondsDelayBetweenPageScrapes = 22;
+        static int secondsDelayBetweenPageScrapes = 32;
         static string[] urls = new string[] {
         "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk",
         "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/bread",
@@ -20,8 +21,16 @@ namespace WarehouseScraper
         "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/snack-muesli-bars"
         };
 
+        public record Product(
+            string id,
+            string name,
+            string size,
+            float currentPrice,
+            string[] category,
+            string sourceSite,
+            DatedPrice[] priceHistory
+        );
         public record DatedPrice(string date, float price);
-        public record Product(string id, string name, float currentPrice, string[] category, string sourceSite, DatedPrice[] priceHistory, string imgUrl);
 
         public static CosmosClient? cosmosClient;
         public static Database? database;
@@ -51,7 +60,7 @@ namespace WarehouseScraper
                 if (!await CosmosDB.EstablishConnection(
                        databaseName: "supermarket-prices",
                        partitionKey: "/name",
-                       containerName: "supermarket-products"
+                       containerName: "products"
                    )) return;
             }
 
@@ -119,8 +128,8 @@ namespace WarehouseScraper
                         // In Dry Run mode, print a log row for every product
                         Console.WriteLine(
                             scrapedProduct.id.PadLeft(9) + " | " +
-                            scrapedProduct.name!.PadRight(50).Substring(0, 50) + " | " +
-                            "$" + scrapedProduct.currentPrice + "\t| " + scrapedProduct.category.Last()
+                            scrapedProduct.name!.PadRight(50).Substring(0, 50) + " | " + scrapedProduct.size.PadRight(8) +
+                            " | $" + scrapedProduct.currentPrice.ToString().PadLeft(5) + " | " + scrapedProduct.category.Last()
                         );
                     }
                 }
@@ -212,6 +221,7 @@ namespace WarehouseScraper
                         Console.WriteLine(
                             scrapedProduct.id.PadLeft(9) + " | " +
                             scrapedProduct.name!.PadRight(50).Substring(0, 50) + " | " +
+                            scrapedProduct.size.PadRight(10).Substring(0, 10) + " | " +
                             "$" + scrapedProduct.currentPrice + "\t| " + scrapedProduct.category.Last()
                         );
                     }
@@ -264,6 +274,9 @@ namespace WarehouseScraper
             // Categories
             string[]? categories = DeriveCategoriesFromUrl(url);
 
+            // Size
+            string size = ExtractProductSize(name);
+
             // DatedPrice with date format 'Tue Jan 14 2023'
             string todaysDate = DateTime.Now.ToString("ddd MMM dd yyyy");
             DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
@@ -272,7 +285,7 @@ namespace WarehouseScraper
             DatedPrice[] priceHistory = new DatedPrice[] { todaysDatedPrice };
 
             // Return completed Product record
-            return (new Product(id, name!, currentPrice, categories!, sourceSite, priceHistory, imgUrl!));
+            return (new Product(id, name!, size, currentPrice, categories!, sourceSite, priceHistory));
         }
 
         // Clean and Parse URLs to the most suitable format for scraping
@@ -301,18 +314,30 @@ namespace WarehouseScraper
 
         // Derives food category names from url, if any categories are available
         // www.domain.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk
-        // returns '[pantry, milk-bread, milk]'
+        // returns '[milk]'
         private static string[]? DeriveCategoriesFromUrl(string url)
         {
-            // If url doesn't contain /browse/, return no category
+            // If url doesn't contain /food-drink/, return no category
             if (url.IndexOf("/food-drink/") < 0) return null;
 
             int categoriesStartIndex = url.IndexOf("/food-drink/");
             int categoriesEndIndex = url.Contains("?") ? url.IndexOf("?") : url.Length;
             string categoriesString = url.Substring(categoriesStartIndex, categoriesEndIndex - categoriesStartIndex);
-            string[] splitCategories = categoriesString.Split("/").Skip(2).ToArray();
+            string lastCategory = categoriesString.Split("/").Skip(2).Last();
 
-            return splitCategories;
+            return new string[] { lastCategory };
+        }
+
+        // Extract potential product size from product name
+        // 'Anchor Blue Milk Powder 1kg' returns '1kg'
+        private static string ExtractProductSize(string productName)
+        {
+            // \s = whitespace char, \d = digit, \w+ = 1 more word chars, $ = end
+            string pattern = @"\s\d\w+$";
+
+            string result = "";
+            result = Regex.Match(productName, pattern).ToString().Trim();
+            return result;
         }
 
         private static async Task RoutePlaywrightExclusions(bool logToConsole)
