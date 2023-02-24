@@ -87,7 +87,7 @@ namespace WarehouseScraper
 
                 // Query all product card entries
                 var productElements = await playwrightPage.QuerySelectorAllAsync("div.product-tile");
-                Log(ConsoleColor.Yellow, productElements.Count.ToString().PadLeft(12) + " products found");
+                Log(ConsoleColor.Yellow, productElements.Count.ToString().PadLeft(8) + " products found");
 
                 // Create counters for logging purposes
                 int newProductsCount = 0, updatedProductsCount = 0, upToDateProductsCount = 0;
