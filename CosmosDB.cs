@@ -98,7 +98,9 @@ namespace WarehouseScraper
                 bool priceHasChanged = (dbProduct!.currentPrice != scrapedProduct.currentPrice);
 
                 // Check if category or size has changed
-                bool otherDataHasChanged = (dbProduct!.size != scrapedProduct.size || dbProduct.category != scrapedProduct.category);
+                string oldCategories = string.Join(" ", dbProduct.category);
+                string newCategories = string.Join(" ", scrapedProduct.category);
+                bool otherDataHasChanged = (dbProduct!.size != scrapedProduct.size || oldCategories != newCategories);
 
                 if (priceHasChanged)
                 {
