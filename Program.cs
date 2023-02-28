@@ -28,7 +28,8 @@ namespace WarehouseScraper
             float currentPrice,
             string[] category,
             string sourceSite,
-            DatedPrice[] priceHistory
+            DatedPrice[] priceHistory,
+            string lastUpdated
         );
         public record DatedPrice(string date, float price);
 
@@ -153,96 +154,8 @@ namespace WarehouseScraper
 
             // Clean up playwright browser and end program
             Log(ConsoleColor.Blue, "\nScraping Completed \n");
+            await playwrightPage.CloseAsync();
             await browser.CloseAsync();
-            return;
-        }
-
-        async static Task openEachURLForScraping(string[] urls, IPage page)
-        {
-            int urlIndex = 1;
-
-            foreach (var url in urls)
-            {
-                // Try load page and wait for full page to dynamically load in
-                try
-                {
-                    Log(ConsoleColor.Yellow, $"\nLoading Page [{urlIndex++}/{urls.Count()}] {url.PadRight(112).Substring(12, 100)}");
-                    await playwrightPage!.GotoAsync(url);
-                    await playwrightPage.WaitForSelectorAsync("div.price-lockup-wrapper");
-                }
-                catch (System.Exception e)
-                {
-                    Log(ConsoleColor.Red, "Unable to Load Web Page");
-                    Console.Write(e.ToString());
-                    return;
-                }
-
-                // Query all product card entries
-                var productElements = await playwrightPage.QuerySelectorAllAsync("div.product-tile");
-                Log(ConsoleColor.Yellow, productElements.Count.ToString().PadLeft(12) + " products found");
-
-                // Create counters for logging purposes
-                int newProductsCount = 0, updatedProductsCount = 0, upToDateProductsCount = 0;
-
-                // Loop through every found playwright element
-                foreach (var element in productElements)
-                {
-                    // Create Product object from playwright element
-                    Product scrapedProduct = await ScrapeProductElementToRecord(element, url);
-
-                    if (!dryRunMode)
-                    {
-                        // Try upsert to CosmosDB
-                        UpsertResponse response = await CosmosDB.UpsertProduct(scrapedProduct);
-
-                        // Increment stats counters based on response from CosmosDB
-                        switch (response)
-                        {
-                            case UpsertResponse.NewProduct:
-                                newProductsCount++;
-                                break;
-
-                            case UpsertResponse.Updated:
-                                updatedProductsCount++;
-                                break;
-
-                            case UpsertResponse.AlreadyUpToDate:
-                                upToDateProductsCount++;
-                                break;
-
-                            case UpsertResponse.Failed:
-                            default:
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        // In Dry Run mode, print a log row for every product
-                        Console.WriteLine(
-                            scrapedProduct.id.PadLeft(9) + " | " +
-                            scrapedProduct.name!.PadRight(50).Substring(0, 50) + " | " +
-                            scrapedProduct.size.PadRight(10).Substring(0, 10) + " | " +
-                            "$" + scrapedProduct.currentPrice + "\t| " + scrapedProduct.category.Last()
-                        );
-                    }
-                }
-
-                if (!dryRunMode)
-                {
-                    // Log consolidated CosmosDB stats for entire page scrape
-                    Log(ConsoleColor.Blue, $"{"CosmosDB:".PadLeft(15)} {newProductsCount} new products, " +
-                    $"{updatedProductsCount} updated, {upToDateProductsCount} already up-to-date");
-                }
-
-                // This page has now completed scraping. A delay is added in-between each subsequent URL
-                if (urlIndex != urls.Count())
-                {
-                    Console.WriteLine($"{"Waiting".PadLeft(15)} {secondsDelayBetweenPageScrapes}s until next page scrape..");
-                    Thread.Sleep(secondsDelayBetweenPageScrapes * 1000);
-                }
-            }
-
-            // All page URLs have completed scraping.
             return;
         }
 
@@ -285,7 +198,16 @@ namespace WarehouseScraper
             DatedPrice[] priceHistory = new DatedPrice[] { todaysDatedPrice };
 
             // Return completed Product record
-            return (new Product(id, name!, size, currentPrice, categories!, sourceSite, priceHistory));
+            return (new Product(
+                                id,
+                                name!,
+                                size,
+                                currentPrice,
+                                categories!,
+                                sourceSite,
+                                priceHistory,
+                                todaysDate
+            ));
         }
 
         // Clean and Parse URLs to the most suitable format for scraping

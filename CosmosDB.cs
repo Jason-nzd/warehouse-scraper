@@ -100,9 +100,13 @@ namespace WarehouseScraper
                 // Check if category or size has changed
                 string oldCategories = string.Join(" ", dbProduct.category);
                 string newCategories = string.Join(" ", scrapedProduct.category);
-                bool otherDataHasChanged = (dbProduct!.size != scrapedProduct.size || oldCategories != newCategories);
+                bool otherDataHasChanged = (
+                    dbProduct!.size != scrapedProduct.size ||
+                    oldCategories != newCategories
+                );
 
-                if (priceHasChanged)
+                // If price has changed and not on the same day, we can update it
+                if (priceHasChanged && (dbProduct.lastUpdated != scrapedProduct.lastUpdated))
                 {
                     // Price has changed, so we can create an updated Product with the changes
                     DatedPrice[] updatedHistory = dbProduct.priceHistory;
@@ -115,7 +119,8 @@ namespace WarehouseScraper
                         scrapedProduct.currentPrice,
                         scrapedProduct.category,
                         scrapedProduct.sourceSite,
-                        updatedHistory
+                        updatedHistory,
+                        scrapedProduct.lastUpdated
                     );
 
                     // Log price change with different verb and colour depending on price change direction
@@ -137,7 +142,8 @@ namespace WarehouseScraper
                         dbProduct.currentPrice,
                         scrapedProduct.category,
                         scrapedProduct.sourceSite,
-                        dbProduct.priceHistory
+                        dbProduct.priceHistory,
+                        dbProduct.lastUpdated
                     );
                 }
 
@@ -146,7 +152,10 @@ namespace WarehouseScraper
                     try
                     {
                         // Upsert the updated product back to CosmosDB
-                        await cosmosContainer!.UpsertItemAsync<Product>(updatedProduct!, new PartitionKey(updatedProduct!.name));
+                        await cosmosContainer!.UpsertItemAsync<Product>(
+                            updatedProduct!,
+                            new PartitionKey(updatedProduct!.name)
+                        );
                         return UpsertResponse.Updated;
                     }
                     catch (Microsoft.Azure.Cosmos.CosmosException e)
