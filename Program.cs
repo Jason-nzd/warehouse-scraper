@@ -73,7 +73,7 @@ namespace WarehouseScraper
 
                     // Query all product card entries
                     var productElements = await playwrightPage.QuerySelectorAllAsync("div.product-tile");
-                    Log(ConsoleColor.Yellow, productElements.Count.ToString().PadLeft(8) + " products found");
+                    Log(ConsoleColor.Yellow, productElements.Count + " products found");
 
                     // Create counters for logging purposes
                     int newProductsCount = 0, updatedProductsCount = 0, upToDateProductsCount = 0;
@@ -143,7 +143,7 @@ namespace WarehouseScraper
                 if (i != urls.Count() - 1)
                 {
                     Log(ConsoleColor.Gray,
-                        $"{"Waiting".PadLeft(10)} {secondsDelayBetweenPageScrapes}s until next page scrape.."
+                        $"Waiting {secondsDelayBetweenPageScrapes}s until next page scrape.."
                     );
                     Thread.Sleep(secondsDelayBetweenPageScrapes * 1000);
                 }
