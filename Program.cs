@@ -11,15 +11,6 @@ namespace WarehouseScraper
     public class Program
     {
         static int secondsDelayBetweenPageScrapes = 32;
-        static string[] urls = new string[] {
-        "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk",
-        "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/bread",
-        "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/cheese",
-        "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/eggs",
-        "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/biscuits",
-        "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/chips",
-        "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/snack-muesli-bars"
-        };
 
         public record Product(
             string id,
@@ -33,6 +24,7 @@ namespace WarehouseScraper
         );
         public record DatedPrice(string date, float price);
 
+        // Singletons for CosmosDB and Playwright
         public static CosmosClient? cosmosClient;
         public static Database? database;
         public static Container? cosmosContainer;
@@ -47,7 +39,7 @@ namespace WarehouseScraper
                 Log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
             }
 
-            // Launch Playwright Browser
+            // Launch Playwright Browser in headless mode
             var playwright = await Playwright.CreateAsync();
             await using var browser = await playwright.Chromium.LaunchAsync(
                 new BrowserTypeLaunchOptions { Headless = true }
@@ -65,8 +57,8 @@ namespace WarehouseScraper
                    )) return;
             }
 
-            // Clean URLs and add desired query options
-            urls = CleanAndParseURLs(urls);
+            // Read URLs from file
+            List<string> urls = ReadURLsFromFile("URLs.txt");
 
             // Open up each URL and run the scraping function
             for (int i = 0; i < urls.Count(); i++)
@@ -78,68 +70,73 @@ namespace WarehouseScraper
                         $"\nLoading Page [{i + 1}/{urls.Count()}] {urls[i].PadRight(112).Substring(12, 100)}");
                     await playwrightPage!.GotoAsync(urls[i]);
                     await playwrightPage.WaitForSelectorAsync("div.price-lockup-wrapper");
-                }
-                catch (System.Exception e)
-                {
-                    Log(ConsoleColor.Red, "Unable to Load Web Page");
-                    Console.Write(e.ToString());
-                    return;
-                }
 
-                // Query all product card entries
-                var productElements = await playwrightPage.QuerySelectorAllAsync("div.product-tile");
-                Log(ConsoleColor.Yellow, productElements.Count.ToString().PadLeft(8) + " products found");
+                    // Query all product card entries
+                    var productElements = await playwrightPage.QuerySelectorAllAsync("div.product-tile");
+                    Log(ConsoleColor.Yellow, productElements.Count.ToString().PadLeft(8) + " products found");
 
-                // Create counters for logging purposes
-                int newProductsCount = 0, updatedProductsCount = 0, upToDateProductsCount = 0;
+                    // Create counters for logging purposes
+                    int newProductsCount = 0, updatedProductsCount = 0, upToDateProductsCount = 0;
 
-                // Loop through every found playwright element
-                foreach (var element in productElements)
-                {
-                    // Create Product object from playwright element
-                    Product scrapedProduct = await ScrapeProductElementToRecord(element, urls[i]);
+                    // Loop through every found playwright element
+                    foreach (var element in productElements)
+                    {
+                        // Create Product object from playwright element
+                        Product scrapedProduct = await ScrapeProductElementToRecord(element, urls[i]);
+
+                        if (!dryRunMode)
+                        {
+                            // Try upsert to CosmosDB
+                            UpsertResponse response = await CosmosDB.UpsertProduct(scrapedProduct);
+
+                            // Increment stats counters based on response from CosmosDB
+                            switch (response)
+                            {
+                                case UpsertResponse.NewProduct:
+                                    newProductsCount++;
+                                    break;
+
+                                case UpsertResponse.Updated:
+                                    updatedProductsCount++;
+                                    break;
+
+                                case UpsertResponse.AlreadyUpToDate:
+                                    upToDateProductsCount++;
+                                    break;
+
+                                case UpsertResponse.Failed:
+                                default:
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            // In Dry Run mode, print a log row for every product
+                            Console.WriteLine(
+                                scrapedProduct.id.PadLeft(9) + " | " +
+                                scrapedProduct.name!.PadRight(40).Substring(0, 40) + " | " +
+                                scrapedProduct.size.PadRight(8) + " | $" +
+                                scrapedProduct.currentPrice.ToString().PadLeft(5) + " | " +
+                                scrapedProduct.category[0]
+                            );
+                        }
+                    }
 
                     if (!dryRunMode)
                     {
-                        // Try upsert to CosmosDB
-                        UpsertResponse response = await CosmosDB.UpsertProduct(scrapedProduct);
-
-                        // Increment stats counters based on response from CosmosDB
-                        switch (response)
-                        {
-                            case UpsertResponse.NewProduct:
-                                newProductsCount++;
-                                break;
-
-                            case UpsertResponse.Updated:
-                                updatedProductsCount++;
-                                break;
-
-                            case UpsertResponse.AlreadyUpToDate:
-                                upToDateProductsCount++;
-                                break;
-
-                            case UpsertResponse.Failed:
-                            default:
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        // In Dry Run mode, print a log row for every product
-                        Console.WriteLine(
-                            scrapedProduct.id.PadLeft(9) + " | " +
-                            scrapedProduct.name!.PadRight(50).Substring(0, 50) + " | " + scrapedProduct.size.PadRight(8) +
-                            " | $" + scrapedProduct.currentPrice.ToString().PadLeft(5) + " | " + scrapedProduct.category.Last()
-                        );
+                        // Log consolidated CosmosDB stats for entire page scrape
+                        Log(ConsoleColor.Blue, $"{"CosmosDB:".PadLeft(15)} {newProductsCount} new products, " +
+                        $"{updatedProductsCount} updated, {upToDateProductsCount} already up-to-date");
                     }
                 }
-
-                if (!dryRunMode)
+                catch (System.TimeoutException)
                 {
-                    // Log consolidated CosmosDB stats for entire page scrape
-                    Log(ConsoleColor.Blue, $"{"CosmosDB:".PadLeft(15)} {newProductsCount} new products, " +
-                    $"{updatedProductsCount} updated, {upToDateProductsCount} already up-to-date");
+                    Log(ConsoleColor.Red, "Unable to Load Web Page - timed out after 30 seconds");
+                }
+                catch (System.Exception e)
+                {
+                    Console.Write(e.ToString());
+                    return;
                 }
 
                 // This page has now completed scraping. A delay is added in-between each subsequent URL
@@ -152,10 +149,17 @@ namespace WarehouseScraper
                 }
             }
 
-            // Clean up playwright browser and end program
-            Log(ConsoleColor.Blue, "\nScraping Completed \n");
-            await playwrightPage.CloseAsync();
-            await browser.CloseAsync();
+            // Try clean up playwright browser and other resources, then end program
+            try
+            {
+                Log(ConsoleColor.Blue, "\nScraping Completed \n");
+                await playwrightPage.Context.CloseAsync();
+                await playwrightPage.CloseAsync();
+                await browser.CloseAsync();
+            }
+            catch (System.Exception)
+            {
+            }
             return;
         }
 
@@ -208,22 +212,6 @@ namespace WarehouseScraper
                                 priceHistory,
                                 todaysDate
             ));
-        }
-
-        // Clean and Parse URLs to the most suitable format for scraping
-        private static string[] CleanAndParseURLs(string[] urls)
-        {
-            for (int i = 0; i < urls.Count(); i++)
-            {
-                if (urls[i].Contains('?'))
-                {
-                    // Strip any existing query options off of URL
-                    urls[i] = urls[i].Substring(0, urls[i].IndexOf('?'));
-                }
-                // Limit vendor to only the warehouse, not 3rd party sellers
-                urls[i] += "?prefn1=marketplaceItem&prefv1=The Warehouse";
-            }
-            return urls;
         }
 
         // Shorthand function for logging with colour
@@ -295,6 +283,45 @@ namespace WarehouseScraper
                     await route.ContinueAsync();
                 }
             });
+        }
+
+        // Reads urls from a txt file, parses urls, and optimises query options for best results
+        private static List<string> ReadURLsFromFile(string fileName)
+        {
+            List<string> urls = new List<string>();
+
+            try
+            {
+                string[] lines = System.IO.File.ReadAllLines(@fileName);
+
+                if (lines.Length == 0) throw new Exception("No lines found in URLs.txt");
+
+                foreach (string line in lines)
+                {
+                    // If line contains .co.nz it should be a URL
+                    if (line.Contains(".co.nz"))
+                    {
+                        string cleanURL = line;
+                        // If url contains ? it has query options already set
+                        if (line.Contains('?'))
+                        {
+                            // Strip any existing query options off of URL
+                            cleanURL = line.Substring(0, line.IndexOf('?'));
+                        }
+                        // Limit vendor to only the warehouse, not 3rd party sellers
+                        cleanURL += "?prefn1=marketplaceItem&prefv1=The Warehouse";
+
+                        // Add completed url into list
+                        urls.Add(cleanURL);
+                    }
+                }
+                return urls;
+            }
+            catch (System.Exception e)
+            {
+                Console.Write("Unable to read file " + fileName + "\n" + e.ToString());
+                throw;
+            }
         }
 
         private static bool dryRunMode = false;
