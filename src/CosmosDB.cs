@@ -1,11 +1,19 @@
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
-using static warehouse_scraper.src.Program;
+using static WarehouseScraper.Program;
 
-namespace warehouse_scraper.src
+namespace WarehouseScraper
 {
     public partial class CosmosDB
     {
+        public enum UpsertResponse
+        {
+            NewProduct,
+            PriceUpdated,
+            NonPriceUpdated,
+            AlreadyUpToDate,
+            Failed
+        }
         public static async Task<bool> EstablishConnection(
             string databaseName,
             string partitionKey,

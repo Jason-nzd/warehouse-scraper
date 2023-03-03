@@ -1,12 +1,13 @@
 ﻿using Microsoft.Playwright;
 using Microsoft.Azure.Cosmos;
 using System.Text.RegularExpressions;
+using static WarehouseScraper.CosmosDB;
 
 // Warehouse Scraper
 // Scrapes product info and pricing from The Warehouse NZ's website.
 // dryRunMode = true - will skip CosmosDB connections and only log to console
 
-namespace warehouse_scraper.src
+namespace WarehouseScraper
 {
     public class Program
     {
@@ -44,6 +45,8 @@ namespace warehouse_scraper.src
             await using var browser = await playwright.Chromium.LaunchAsync(
                 new BrowserTypeLaunchOptions { Headless = true }
             );
+
+            // Launch Page and route exclusions, such as ads, trackers, etc
             playwrightPage = await browser.NewPageAsync();
             await RoutePlaywrightExclusions(logToConsole: false);
 
@@ -204,14 +207,14 @@ namespace warehouse_scraper.src
 
             // Return completed Product record
             return new Product(
-                                id,
-                                name!,
-                                size,
-                                currentPrice,
-                                categories!,
-                                sourceSite,
-                                priceHistory,
-                                todaysDate
+                id,
+                name!,
+                size,
+                currentPrice,
+                categories!,
+                sourceSite,
+                priceHistory,
+                todaysDate
             );
         }
 
@@ -328,13 +331,6 @@ namespace warehouse_scraper.src
         }
 
         private static bool dryRunMode = false;
-        public enum UpsertResponse
-        {
-            NewProduct,
-            PriceUpdated,
-            NonPriceUpdated,
-            AlreadyUpToDate,
-            Failed
-        }
+
     }
 }

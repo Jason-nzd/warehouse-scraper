@@ -1,6 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using static warehouse_scraper.src.CosmosDB;
-using static warehouse_scraper.src.Program;
+using static WarehouseScraper.CosmosDB;
+using static WarehouseScraper.Program;
 
 namespace WarehouseScraperTests
 {
@@ -52,7 +52,7 @@ namespace WarehouseScraperTests
             Product updatedProduct = BuildUpdatedProduct(dbProduct, scrapedProduct)!;
 
             // Assert that the price history array length has increased by one
-            Assert.IsTrue(updatedProduct.priceHistory.Count() == dbProduct.priceHistory.Count()+1, 
+            Assert.IsTrue(updatedProduct.priceHistory.Count() == dbProduct.priceHistory.Count() + 1,
                 "Updated/DB Price Count = " + updatedProduct.priceHistory.Count() + " / " + dbProduct.priceHistory.Count());
         }
 

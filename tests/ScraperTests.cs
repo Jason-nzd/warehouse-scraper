@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Playwright;
-using static warehouse_scraper.src.Program;
+using static WarehouseScraper.Program;
 
 namespace WarehouseScraperTests
 {
