@@ -10,7 +10,7 @@ namespace WarehouseScraper
 {
     public class Program
     {
-        static int secondsDelayBetweenPageScrapes = 32;
+        static int secondsDelayBetweenPageScrapes = 22;
 
         public record Product(
             string id,
@@ -225,17 +225,19 @@ namespace WarehouseScraper
         // Derives food category names from url, if any categories are available
         // www.domain.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk
         // returns '[milk]'
-        private static string[]? DeriveCategoriesFromUrl(string url)
+        private static string[] DeriveCategoriesFromUrl(string url)
         {
             // If url doesn't contain /food-drink/, return no category
-            if (url.IndexOf("/food-drink/") < 0) return null;
+            if (url.IndexOf("/food-drink/") > 0)
+            {
+                int categoriesStartIndex = url.IndexOf("/food-drink/");
+                int categoriesEndIndex = url.Contains("?") ? url.IndexOf("?") : url.Length;
+                string categoriesString = url.Substring(categoriesStartIndex, categoriesEndIndex - categoriesStartIndex);
+                string lastCategory = categoriesString.Split("/").Skip(2).Last();
 
-            int categoriesStartIndex = url.IndexOf("/food-drink/");
-            int categoriesEndIndex = url.Contains("?") ? url.IndexOf("?") : url.Length;
-            string categoriesString = url.Substring(categoriesStartIndex, categoriesEndIndex - categoriesStartIndex);
-            string lastCategory = categoriesString.Split("/").Skip(2).Last();
-
-            return new string[] { lastCategory };
+                return new string[] { lastCategory };
+            }
+            else return new string[] { "Uncategorised" };
         }
 
         // Extract potential product size from product name
@@ -309,7 +311,7 @@ namespace WarehouseScraper
                             cleanURL = line.Substring(0, line.IndexOf('?'));
                         }
                         // Limit vendor to only the warehouse, not 3rd party sellers
-                        cleanURL += "?prefn1=marketplaceItem&prefv1=The Warehouse";
+                        cleanURL += "?prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers";
 
                         // Add completed url into list
                         urls.Add(cleanURL);
