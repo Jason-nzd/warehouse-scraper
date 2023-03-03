@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 // Scrapes product info and pricing from The Warehouse NZ's website.
 // dryRunMode = true - will skip CosmosDB connections and only log to console
 
-namespace WarehouseScraper
+namespace warehouse_scraper.src
 {
     public class Program
     {
@@ -76,7 +76,7 @@ namespace WarehouseScraper
                     Log(ConsoleColor.Yellow, productElements.Count + " products found");
 
                     // Create counters for logging purposes
-                    int newProductsCount = 0, updatedProductsCount = 0, upToDateProductsCount = 0;
+                    int newCount = 0, priceUpdatedCount = 0, nonPriceUpdatedCount = 0, upToDateCount = 0;
 
                     // Loop through every found playwright element
                     foreach (var element in productElements)
@@ -93,17 +93,17 @@ namespace WarehouseScraper
                             switch (response)
                             {
                                 case UpsertResponse.NewProduct:
-                                    newProductsCount++;
+                                    newCount++;
                                     break;
-
-                                case UpsertResponse.Updated:
-                                    updatedProductsCount++;
+                                case UpsertResponse.PriceUpdated:
+                                    priceUpdatedCount++;
                                     break;
-
+                                case UpsertResponse.NonPriceUpdated:
+                                    nonPriceUpdatedCount++;
+                                    break;
                                 case UpsertResponse.AlreadyUpToDate:
-                                    upToDateProductsCount++;
+                                    upToDateCount++;
                                     break;
-
                                 case UpsertResponse.Failed:
                                 default:
                                     break;
@@ -125,15 +125,16 @@ namespace WarehouseScraper
                     if (!dryRunMode)
                     {
                         // Log consolidated CosmosDB stats for entire page scrape
-                        Log(ConsoleColor.Blue, $"{"CosmosDB:".PadLeft(15)} {newProductsCount} new products, " +
-                        $"{updatedProductsCount} updated, {upToDateProductsCount} already up-to-date");
+                        Log(ConsoleColor.Blue, $"{"CosmosDB:".PadLeft(15)} {newCount} new products, " +
+                        $"{priceUpdatedCount} prices updated, {nonPriceUpdatedCount} info updated, " +
+                        $"{upToDateCount} already up-to-date");
                     }
                 }
-                catch (System.TimeoutException)
+                catch (TimeoutException)
                 {
                     Log(ConsoleColor.Red, "Unable to Load Web Page - timed out after 30 seconds");
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
                     Console.Write(e.ToString());
                     return;
@@ -157,7 +158,7 @@ namespace WarehouseScraper
                 await playwrightPage.CloseAsync();
                 await browser.CloseAsync();
             }
-            catch (System.Exception)
+            catch (Exception)
             {
             }
             return;
@@ -202,7 +203,7 @@ namespace WarehouseScraper
             DatedPrice[] priceHistory = new DatedPrice[] { todaysDatedPrice };
 
             // Return completed Product record
-            return (new Product(
+            return new Product(
                                 id,
                                 name!,
                                 size,
@@ -211,7 +212,7 @@ namespace WarehouseScraper
                                 sourceSite,
                                 priceHistory,
                                 todaysDate
-            ));
+            );
         }
 
         // Shorthand function for logging with colour
@@ -259,7 +260,7 @@ namespace WarehouseScraper
             string[] typeExclusions = { "image", "stylesheet", "media", "font", "other" };
             string[] urlExclusions = { "googleoptimize.com", "gtm.js", "visitoridentification.js", "js-agent.newrelic.com",
             "cquotient.com", "googletagmanager.com", "cloudflareinsights.com", "dwanalytics", "edge.adobedc.net" };
-            List<string> exclusions = urlExclusions.ToList<string>();
+            List<string> exclusions = urlExclusions.ToList();
 
             // Route with exclusions processed
             await playwrightPage!.RouteAsync("**/*", async route =>
@@ -294,7 +295,7 @@ namespace WarehouseScraper
 
             try
             {
-                string[] lines = System.IO.File.ReadAllLines(@fileName);
+                string[] lines = File.ReadAllLines(@fileName);
 
                 if (lines.Length == 0) throw new Exception("No lines found in URLs.txt");
 
@@ -319,7 +320,7 @@ namespace WarehouseScraper
                 }
                 return urls;
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 Console.Write("Unable to read file " + fileName + "\n" + e.ToString());
                 throw;
@@ -330,7 +331,8 @@ namespace WarehouseScraper
         public enum UpsertResponse
         {
             NewProduct,
-            Updated,
+            PriceUpdated,
+            NonPriceUpdated,
             AlreadyUpToDate,
             Failed
         }

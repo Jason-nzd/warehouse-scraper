@@ -1,6 +1,12 @@
 /.vscode
 /.vs
-/bin
-/obj
-appsettings.json
-appsettings.local.json
+
+/src/bin
+/src/obj
+
+/TestResults
+/tests/bin
+/tests/obj
+
+/src/appsettings.json
+/src/appsettings.local.json
