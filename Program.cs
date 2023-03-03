@@ -225,7 +225,7 @@ namespace WarehouseScraper
         // Derives food category names from url, if any categories are available
         // www.domain.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk
         // returns '[milk]'
-        private static string[] DeriveCategoriesFromUrl(string url)
+        public static string[] DeriveCategoriesFromUrl(string url)
         {
             // If url doesn't contain /food-drink/, return no category
             if (url.IndexOf("/food-drink/") > 0)
@@ -242,7 +242,7 @@ namespace WarehouseScraper
 
         // Extract potential product size from product name
         // 'Anchor Blue Milk Powder 1kg' returns '1kg'
-        private static string ExtractProductSize(string productName)
+        public static string ExtractProductSize(string productName)
         {
             // \s = whitespace char, \d = digit, \w+ = 1 more word chars, $ = end
             string pattern = @"\s\d\w+$";
