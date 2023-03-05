@@ -65,7 +65,7 @@ namespace WarehouseScraperTests
         [TestMethod]
         public void ExtractProductSize_255g()
         {
-            string productName = "Lee Kum Kee Panda Oyster Sauce 255g ";
+            string productName = "Lee Kum Kee Panda Oyster Sauce 255g";
             Assert.AreEqual<string>(ExtractProductSize(productName), "255g");
         }
 
