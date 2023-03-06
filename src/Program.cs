@@ -29,6 +29,8 @@ namespace WarehouseScraper
         public static CosmosClient? cosmosClient;
         public static Database? database;
         public static Container? cosmosContainer;
+        public static IPlaywright? playwright;
+        public static IBrowser? browser;
         public static IPage? playwrightPage;
 
         public static async Task Main(string[] args)
@@ -40,15 +42,8 @@ namespace WarehouseScraper
                 Log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
             }
 
-            // Launch Playwright Browser in headless mode
-            var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(
-                new BrowserTypeLaunchOptions { Headless = true }
-            );
-
-            // Launch Page and route exclusions, such as ads, trackers, etc
-            playwrightPage = await browser.NewPageAsync();
-            await RoutePlaywrightExclusions(logToConsole: false);
+            // Establish Playwright browser
+            await EstablishPlaywright();
 
             // Connect to CosmosDB - end program if unable to connect
             if (!dryRunMode)
@@ -157,14 +152,39 @@ namespace WarehouseScraper
             try
             {
                 Log(ConsoleColor.Blue, "\nScraping Completed \n");
-                await playwrightPage.Context.CloseAsync();
+                await playwrightPage!.Context.CloseAsync();
                 await playwrightPage.CloseAsync();
-                await browser.CloseAsync();
+                await browser!.CloseAsync();
             }
             catch (Exception)
             {
             }
             return;
+        }
+
+        private async static Task EstablishPlaywright()
+        {
+            try
+            {
+                // Launch Playwright Browser in headless mode
+                playwright = await Playwright.CreateAsync();
+
+                browser = await playwright.Chromium.LaunchAsync(
+                    new BrowserTypeLaunchOptions { Headless = true }
+                );
+
+                // Launch Page 
+                playwrightPage = await browser.NewPageAsync();
+
+                // Route exclusions, such as ads, trackers, etc
+                await RoutePlaywrightExclusions(false);
+                return;
+            }
+            catch (Microsoft.Playwright.PlaywrightException)
+            {
+                Log(ConsoleColor.Red, "Browser must be manually installed using: \npwsh bin/Debug/net6.0/playwright.ps1 install\n");
+                throw;
+            }
         }
 
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
