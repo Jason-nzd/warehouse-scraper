@@ -21,9 +21,9 @@ namespace WarehouseScraper
             string[] category,
             string sourceSite,
             DatedPrice[] priceHistory,
-            string lastUpdated
+            DateTime lastUpdated
         );
-        public record DatedPrice(string date, float price);
+        public record DatedPrice(DateTime date, float price);
 
         // Singletons for CosmosDB and Playwright
         public static CosmosClient? cosmosClient;
@@ -218,8 +218,8 @@ namespace WarehouseScraper
             // Size
             string size = ExtractProductSize(name);
 
-            // DatedPrice with date format 'Tue Jan 14 2023'
-            string todaysDate = DateTime.Now.ToString("ddd MMM dd yyyy");
+            // DatedPrice
+            DateTime todaysDate = DateTime.UtcNow;
             DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
 
             // Create Price History array with a single element
