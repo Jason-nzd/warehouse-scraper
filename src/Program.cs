@@ -11,7 +11,7 @@ namespace WarehouseScraper
 {
     public class Program
     {
-        static int secondsDelayBetweenPageScrapes = 22;
+        static int secondsDelayBetweenPageScrapes = 15;
 
         public record Product(
             string id,
