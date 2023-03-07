@@ -140,7 +140,9 @@ namespace WarehouseScraper
             string newCategories = string.Join(" ", scrapedProduct.category);
             bool otherDataHasChanged =
                 dbProduct!.size != scrapedProduct.size ||
-                oldCategories != newCategories
+                oldCategories != newCategories ||
+                dbProduct.sourceSite != scrapedProduct.sourceSite ||
+                dbProduct.name != scrapedProduct.name
             ;
 
             // If price has changed and not on the same day, we can update it
@@ -165,7 +167,7 @@ namespace WarehouseScraper
                 // Return new product with updated data
                 return new Product(
                     dbProduct.id,
-                    dbProduct.name,
+                    scrapedProduct.name,
                     scrapedProduct.size,
                     scrapedProduct.currentPrice,
                     scrapedProduct.category,
@@ -176,10 +178,10 @@ namespace WarehouseScraper
             }
             else if (otherDataHasChanged)
             {
-                // If only non-price data has changed, update size, category, sourceSite, fields
+                // If only non-price data has changed, update non price/date fields
                 return new Product(
                     dbProduct.id,
-                    dbProduct.name,
+                    scrapedProduct.name,
                     scrapedProduct.size,
                     dbProduct.currentPrice,
                     scrapedProduct.category,
