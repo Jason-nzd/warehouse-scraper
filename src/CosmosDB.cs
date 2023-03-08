@@ -6,38 +6,25 @@ namespace WarehouseScraper
 {
     public partial class CosmosDB
     {
-        public enum UpsertResponse
-        {
-            NewProduct,
-            PriceUpdated,
-            NonPriceUpdated,
-            AlreadyUpToDate,
-            Failed
-        }
-        public static async Task<bool> EstablishConnection(
-            string databaseName,
-            string partitionKey,
-            string containerName
-        )
+        // CosmosDB singletons
+        public static CosmosClient? cosmosClient;
+        public static Database? database;
+        public static Container? cosmosContainer;
+
+        public static async Task<bool> EstablishConnection(string db, string partitionKey, string container)
         {
             try
             {
                 // Read from appsettings.json or appsettings.local.json
-                IConfiguration config = new ConfigurationBuilder()
-                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                    .AddEnvironmentVariables()
-                    .Build();
-
                 cosmosClient = new CosmosClient(
-                    accountEndpoint: config.GetRequiredSection("COSMOS_ENDPOINT").Get<string>(),
-                    authKeyOrResourceToken: config.GetRequiredSection("COSMOS_KEY").Get<string>()!
+                    accountEndpoint: config!.GetRequiredSection("COSMOS_ENDPOINT").Get<string>(),
+                    authKeyOrResourceToken: config!.GetRequiredSection("COSMOS_KEY").Get<string>()!
                 );
 
-                database = cosmosClient.GetDatabase(id: databaseName);
+                database = cosmosClient.GetDatabase(id: db);
 
-                // Container reference with creation if it does not already exist
                 cosmosContainer = await database.CreateContainerIfNotExistsAsync(
-                    id: containerName,
+                    id: container,
                     partitionKeyPath: partitionKey,
                     throughput: 400
                 );
@@ -195,6 +182,15 @@ namespace WarehouseScraper
                 // Else existing DB Product has not changed
                 return null;
             }
+        }
+
+        public enum UpsertResponse
+        {
+            NewProduct,
+            PriceUpdated,
+            NonPriceUpdated,
+            AlreadyUpToDate,
+            Failed
         }
 
         // Inserts a new Product into CosmosDB

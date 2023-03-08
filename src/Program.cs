@@ -1,17 +1,17 @@
 ﻿using Microsoft.Playwright;
-using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Configuration;
 using System.Text.RegularExpressions;
 using static WarehouseScraper.CosmosDB;
 
 // Warehouse Scraper
 // Scrapes product info and pricing from The Warehouse NZ's website.
-// dryRunMode = true - will skip CosmosDB connections and only log to console
 
 namespace WarehouseScraper
 {
     public class Program
     {
         static int secondsDelayBetweenPageScrapes = 15;
+        static bool uploadImagesToAzureFunc = true;
 
         public record Product(
             string id,
@@ -25,13 +25,17 @@ namespace WarehouseScraper
         );
         public record DatedPrice(DateTime date, float price);
 
-        // Singletons for CosmosDB and Playwright
-        public static CosmosClient? cosmosClient;
-        public static Database? database;
-        public static Container? cosmosContainer;
+        // Singletons for Playwright
         public static IPlaywright? playwright;
         public static IBrowser? browser;
         public static IPage? playwrightPage;
+        public static HttpClient httpclient = new HttpClient();
+
+        // Get config from appsettings.json
+        public static IConfiguration config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddEnvironmentVariables()
+            .Build();
 
         public static async Task Main(string[] args)
         {
@@ -49,9 +53,9 @@ namespace WarehouseScraper
             if (!dryRunMode)
             {
                 if (!await CosmosDB.EstablishConnection(
-                       databaseName: "supermarket-prices",
+                       db: "supermarket-prices",
                        partitionKey: "/name",
-                       containerName: "products"
+                       container: "products"
                    )) return;
             }
 
@@ -61,11 +65,12 @@ namespace WarehouseScraper
             // Open up each URL and run the scraping function
             for (int i = 0; i < urls.Count(); i++)
             {
-                // Try load page and wait for full content to dynamically load in
                 try
                 {
+                    // Try load page and wait for full content to dynamically load in
                     Log(ConsoleColor.Yellow,
                         $"\nLoading Page [{i + 1}/{urls.Count()}] {urls[i].PadRight(112).Substring(12, 100)}");
+
                     await playwrightPage!.GotoAsync(urls[i]);
                     await playwrightPage.WaitForSelectorAsync("div.price-lockup-wrapper");
 
@@ -105,6 +110,12 @@ namespace WarehouseScraper
                                 case UpsertResponse.Failed:
                                 default:
                                     break;
+                            }
+
+                            if (uploadImagesToAzureFunc)
+                            {
+                                // Use Azure Function to upload product image
+                                await UploadImageUsingRestAPI(element, scrapedProduct.id);
                             }
                         }
                         else
@@ -187,6 +198,30 @@ namespace WarehouseScraper
             }
         }
 
+        private async static Task UploadImageUsingRestAPI(IElementHandle element, string id)
+        {
+            // Image URL
+            var imgDiv = await element.QuerySelectorAsync(".tile-image");
+            string? imgUrl = await imgDiv!.GetAttributeAsync("src");
+
+            // Get AZURE_FUNC_URL from appsettings.json
+            // Example format:
+            // https://image-to-s3.azurewebsites.net/api/ImageMakeTransparentTrigger?code=1234asdf==
+            string? funcUrl = config.GetRequiredSection("AZURE_FUNC_URL").Get<string>();
+
+            // Check funcUrl is valid
+            if (!funcUrl!.Contains("http"))
+                throw new Exception("AZURE_FUNC_URL in appsettings.json invalid. Should be in format:\n\n" +
+                "\"AZURE_FUNC_URL\": \"https://image-to-s3.azurewebsites.net/api/ImageMakeTransparentTrigger?code=1234asdf==\"");
+
+            // Perform http get
+            string restUrl = funcUrl + "&filename=" + id + "&url=" + imgUrl;
+            var response = await httpclient.GetAsync(restUrl);
+
+            Log(ConsoleColor.Gray, $"New Image Uploaded: {id} Status: {response.ReasonPhrase}");
+            return;
+        }
+
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
         //  and then returns a completed Product record
         private async static Task<Product> ScrapeProductElementToRecord(IElementHandle element, string url)
@@ -194,10 +229,6 @@ namespace WarehouseScraper
             // Name
             var aTag = await element.QuerySelectorAsync("a.link");
             string? name = await aTag!.InnerTextAsync();
-
-            // Image URL
-            var imgDiv = await element.QuerySelectorAsync(".tile-image");
-            string? imgUrl = await imgDiv!.GetAttributeAsync("src");
 
             // ID
             var linkHref = await aTag.GetAttributeAsync("href");   // get href to product page
