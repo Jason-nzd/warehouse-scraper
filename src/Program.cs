@@ -85,9 +85,9 @@ namespace WarehouseScraper
                     foreach (var element in productElements)
                     {
                         // Create Product object from playwright element
-                        Product scrapedProduct = await ScrapeProductElementToRecord(element, urls[i]);
+                        Product? scrapedProduct = await ScrapeProductElementToRecord(element, urls[i]);
 
-                        if (!dryRunMode)
+                        if (!dryRunMode && scrapedProduct != null)
                         {
                             // Try upsert to CosmosDB
                             UpsertResponse response = await CosmosDB.UpsertProduct(scrapedProduct);
@@ -115,14 +115,14 @@ namespace WarehouseScraper
                             if (uploadImagesToAzureFunc)
                             {
                                 // Use Azure Function to upload product image
-                                await UploadImageUsingRestAPI(element, scrapedProduct.id);
+                                await UploadImageUsingRestAPI(element, scrapedProduct);
                             }
                         }
-                        else
+                        else if (dryRunMode && scrapedProduct != null)
                         {
                             // In Dry Run mode, print a log row for every product
                             Console.WriteLine(
-                                scrapedProduct.id.PadLeft(9) + " | " +
+                                scrapedProduct!.id.PadLeft(9) + " | " +
                                 scrapedProduct.name!.PadRight(40).Substring(0, 40) + " | " +
                                 scrapedProduct.size.PadRight(8) + " | $" +
                                 scrapedProduct.currentPrice.ToString().PadLeft(5) + " | " +
@@ -134,7 +134,7 @@ namespace WarehouseScraper
                     if (!dryRunMode)
                     {
                         // Log consolidated CosmosDB stats for entire page scrape
-                        Log(ConsoleColor.Blue, $"{"CosmosDB:".PadLeft(15)} {newCount} new products, " +
+                        Log(ConsoleColor.Blue, $"\nCosmosDB: {newCount} new products, " +
                         $"{priceUpdatedCount} prices updated, {nonPriceUpdatedCount} info updated, " +
                         $"{upToDateCount} already up-to-date");
                     }
@@ -193,80 +193,97 @@ namespace WarehouseScraper
             }
             catch (Microsoft.Playwright.PlaywrightException)
             {
-                Log(ConsoleColor.Red, "Browser must be manually installed using: \npwsh bin/Debug/net6.0/playwright.ps1 install\n");
+                Log(
+                    ConsoleColor.Red,
+                    "Browser must be manually installed using: \n" +
+                    "pwsh bin/Debug/net6.0/playwright.ps1 install\n"
+                );
                 throw;
             }
         }
 
-        private async static Task UploadImageUsingRestAPI(IElementHandle element, string id)
+        private async static Task UploadImageUsingRestAPI(IElementHandle element, Product product)
         {
-            // Image URL
+            // Image URL - get thumbnail url from page, then swap url params to get hi-res version
             var imgDiv = await element.QuerySelectorAsync(".tile-image");
             string? imgUrl = await imgDiv!.GetAttributeAsync("src");
+            imgUrl = imgUrl!.Replace("sw=292&sh=292", "sw=765&sh=765");
 
             // Get AZURE_FUNC_URL from appsettings.json
             // Example format:
-            // https://image-to-s3.azurewebsites.net/api/ImageMakeTransparentTrigger?code=1234asdf==
+            // https://<azurefunc>.azurewebsites.net/api/ImageToS3?code=1234asdf==
             string? funcUrl = config.GetRequiredSection("AZURE_FUNC_URL").Get<string>();
 
             // Check funcUrl is valid
             if (!funcUrl!.Contains("http"))
                 throw new Exception("AZURE_FUNC_URL in appsettings.json invalid. Should be in format:\n\n" +
-                "\"AZURE_FUNC_URL\": \"https://image-to-s3.azurewebsites.net/api/ImageMakeTransparentTrigger?code=1234asdf==\"");
+                "\"AZURE_FUNC_URL\": \"https://<azurefunc>.azurewebsites.net/api/ImageToS3?code=1234asdf==\"");
 
             // Perform http get
-            string restUrl = funcUrl + "&filename=" + id + "&url=" + imgUrl;
+            string restUrl = funcUrl + "&filename=" + product.id + "&url=" + imgUrl;
             var response = await httpclient.GetAsync(restUrl);
+            Console.Write(".");
 
-            Log(ConsoleColor.Gray, $"New Image Uploaded: {id} Status: {response.ReasonPhrase}");
+            // Log(
+            //     ConsoleColor.Gray,
+            //     $"New Image: {product.id} {product.name.PadRight(30).Substring(0, 30)} " +
+            // );
             return;
         }
 
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
         //  and then returns a completed Product record
-        private async static Task<Product> ScrapeProductElementToRecord(IElementHandle element, string url)
+        private async static Task<Product?> ScrapeProductElementToRecord(IElementHandle element, string url)
         {
-            // Name
-            var aTag = await element.QuerySelectorAsync("a.link");
-            string? name = await aTag!.InnerTextAsync();
+            try
+            {
+                // Name
+                var aTag = await element.QuerySelectorAsync("a.link");
+                string? name = await aTag!.InnerTextAsync();
 
-            // ID
-            var linkHref = await aTag.GetAttributeAsync("href");   // get href to product page
-            var fileName = linkHref!.Split('/').Last();            // get filename ending in .html
-            string id = fileName.Split('.').First();               // extract ID from filename
+                // ID
+                var linkHref = await aTag.GetAttributeAsync("href");   // get href to product page
+                var fileName = linkHref!.Split('/').Last();            // get filename ending in .html
+                string id = fileName.Split('.').First();               // extract ID from filename
 
-            // Price
-            var priceTag = await element.QuerySelectorAsync("span.now-price");
-            var priceString = await priceTag!.InnerTextAsync();
-            float currentPrice = float.Parse(priceString.Substring(1));
+                // Price
+                var priceTag = await element.QuerySelectorAsync("span.now-price");
+                var priceString = await priceTag!.InnerTextAsync();
+                float currentPrice = float.Parse(priceString.Substring(1));
 
-            // Source Website
-            string sourceSite = "thewarehouse.co.nz";
+                // Source Website
+                string sourceSite = "thewarehouse.co.nz";
 
-            // Categories
-            string[]? categories = DeriveCategoriesFromUrl(url);
+                // Categories
+                string[]? categories = DeriveCategoriesFromUrl(url);
 
-            // Size
-            string size = ExtractProductSize(name);
+                // Size
+                string size = ExtractProductSize(name);
 
-            // DatedPrice
-            DateTime todaysDate = DateTime.UtcNow;
-            DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
+                // DatedPrice
+                DateTime todaysDate = DateTime.UtcNow;
+                DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
 
-            // Create Price History array with a single element
-            DatedPrice[] priceHistory = new DatedPrice[] { todaysDatedPrice };
+                // Create Price History array with a single element
+                DatedPrice[] priceHistory = new DatedPrice[] { todaysDatedPrice };
 
-            // Return completed Product record
-            return new Product(
-                id,
-                name!,
-                size,
-                currentPrice,
-                categories!,
-                sourceSite,
-                priceHistory,
-                todaysDate
-            );
+                // Return completed Product record
+                return new Product(
+                    id,
+                    name!,
+                    size,
+                    currentPrice,
+                    categories!,
+                    sourceSite,
+                    priceHistory,
+                    todaysDate
+                );
+            }
+            catch (System.Exception)
+            {
+                // Return null if any exceptions occurred during scraping
+                return null;
+            }
         }
 
         // Shorthand function for logging with colour
@@ -372,13 +389,18 @@ namespace WarehouseScraper
                         urls.Add(cleanURL);
                     }
                 }
-                return urls;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Console.Write("Unable to read file " + fileName + "\n" + e.ToString());
-                throw;
+                Console.Write(
+                    "Unable to read file " + fileName + "\n" +
+                    "Using Sample URL instead\n"
+                );
+                urls.Add(
+                    "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/spreads"
+                );
             }
+            return urls;
         }
 
         private static bool dryRunMode = false;
