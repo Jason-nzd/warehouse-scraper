@@ -326,8 +326,9 @@ namespace Scraper
                     todaysDate
                 );
             }
-            catch (System.Exception)
+            catch (Exception e)
             {
+                Log(ConsoleColor.Red, $"Price scrape error: " + e.Message);
                 // Return null if any exceptions occurred during scraping
                 return null;
             }
