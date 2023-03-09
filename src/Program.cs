@@ -308,7 +308,7 @@ namespace Scraper
                 string size = ExtractProductSize(name);
 
                 // DatedPrice
-                DateTime todaysDate = DateTime.UtcNow.AddHours(12);    // add 12hrs for NZ time
+                DateTime todaysDate = DateTime.UtcNow;
                 DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
 
                 // Create Price History array with a single element
