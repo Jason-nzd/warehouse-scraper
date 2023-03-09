@@ -1,8 +1,8 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using static WarehouseScraper.CosmosDB;
-using static WarehouseScraper.Program;
+using static Scraper.CosmosDB;
+using static Scraper.Program;
 
-namespace WarehouseScraperTests
+namespace ScraperTests
 {
     [TestClass]
     public class CosmosTests

@@ -1,8 +1,9 @@
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
-using static WarehouseScraper.Program;
+using static Scraper.Program;
+using static Scraper.Utilities;
 
-namespace WarehouseScraper
+namespace Scraper
 {
     public partial class CosmosDB
     {
@@ -34,21 +35,21 @@ namespace WarehouseScraper
             }
             catch (CosmosException e)
             {
-                Log(ConsoleColor.Red, e.GetType().ToString());
+                LogError(e.GetType().ToString());
                 Log(ConsoleColor.Red,
                 "Error Connecting to CosmosDB - check appsettings.json, endpoint or key may be expired");
                 return false;
             }
             catch (HttpRequestException e)
             {
-                Log(ConsoleColor.Red, e.GetType().ToString());
+                LogError(e.GetType().ToString());
                 Log(ConsoleColor.Red,
                 "Error Connecting to CosmosDB - check firewall and internet status");
                 return false;
             }
             catch (Exception e)
             {
-                Log(ConsoleColor.Red, e.GetType().ToString());
+                LogError(e.GetType().ToString());
                 Log(ConsoleColor.Red,
                 "Error Connecting to CosmosDB - make sure appsettings.json is created and contains:");
                 Log(ConsoleColor.White,
@@ -144,7 +145,7 @@ namespace WarehouseScraper
 
                 // Log price change with different verb and colour depending on price change direction
                 bool priceTrendingDown = scrapedProduct.currentPrice < dbProduct!.currentPrice;
-                string priceTrendText = "Price " + (priceTrendingDown ? "Decreased" : "Increased") + ":";
+                string priceTrendText = "   Price " + (priceTrendingDown ? "Down" : "Up  ") + ":";
 
                 Log(priceTrendingDown ? ConsoleColor.Green : ConsoleColor.Red,
                     $"{priceTrendText} {dbProduct.name.PadRight(40).Substring(0, 40)} from " +

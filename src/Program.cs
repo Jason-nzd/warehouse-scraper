@@ -1,12 +1,12 @@
 ﻿using Microsoft.Playwright;
 using Microsoft.Extensions.Configuration;
-using System.Text.RegularExpressions;
-using static WarehouseScraper.CosmosDB;
+using static Scraper.CosmosDB;
+using static Scraper.Utilities;
 
 // Warehouse Scraper
 // Scrapes product info and pricing from The Warehouse NZ's website.
 
-namespace WarehouseScraper
+namespace Scraper
 {
     public class Program
     {
@@ -40,9 +40,11 @@ namespace WarehouseScraper
         public static async Task Main(string[] args)
         {
             // Handle arguments - 'dotnet run dry' will run in dry mode, bypassing CosmosDB
+            //  'dotnet run reverse' will reverse the order that each page is loaded
             if (args.Length > 0)
             {
-                if (args[0] == "dry") dryRunMode = true;
+                if (args.Contains("dry")) dryRunMode = true;
+                if (args.Contains("reverse")) reverseMode = true;
                 Log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
             }
 
@@ -59,8 +61,25 @@ namespace WarehouseScraper
                    )) return;
             }
 
-            // Read URLs from file
-            List<string> urls = ReadURLsFromFile("URLs.txt");
+            // Read lines from text file - end program if unable to read
+            List<string>? lines = ReadLinesFromFile("Urls.txt");
+            if (lines == null) return;
+
+            // Parse and optimise each line into valid urls to be scraped
+            List<string> urls = new List<string>();
+            foreach (string line in lines)
+            {
+                string? validUrl =
+                    ParseAndOptimiseURL(
+                        url: line,
+                        urlShouldContain: "warehouse.co.nz",
+                        replaceQueryParams: "?prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers"
+                    );
+                if (validUrl != null) urls.Add(validUrl);
+            }
+
+            // Optionally reverse the order of urls
+            if (reverseMode) urls.Reverse();
 
             // Open up each URL and run the scraping function
             for (int i = 0; i < urls.Count(); i++)
@@ -82,10 +101,10 @@ namespace WarehouseScraper
                     int newCount = 0, priceUpdatedCount = 0, nonPriceUpdatedCount = 0, upToDateCount = 0;
 
                     // Loop through every found playwright element
-                    foreach (var element in productElements)
+                    foreach (var productElement in productElements)
                     {
                         // Create Product object from playwright element
-                        Product? scrapedProduct = await ScrapeProductElementToRecord(element, urls[i]);
+                        Product? scrapedProduct = await ScrapeProductElementToRecord(productElement, urls[i]);
 
                         if (!dryRunMode && scrapedProduct != null)
                         {
@@ -115,7 +134,9 @@ namespace WarehouseScraper
                             if (uploadImagesToAzureFunc)
                             {
                                 // Use Azure Function to upload product image
-                                await UploadImageUsingRestAPI(element, scrapedProduct);
+                                string hiResImageUrl = await GetHiresImageUrl(productElement);
+                                if (hiResImageUrl != "" || hiResImageUrl != null)
+                                    await UploadImageUsingRestAPI(hiResImageUrl, scrapedProduct);
                             }
                         }
                         else if (dryRunMode && scrapedProduct != null)
@@ -141,7 +162,11 @@ namespace WarehouseScraper
                 }
                 catch (TimeoutException)
                 {
-                    Log(ConsoleColor.Red, "Unable to Load Web Page - timed out after 30 seconds");
+                    LogError("Unable to Load Web Page - timed out after 30 seconds");
+                }
+                catch (PlaywrightException e)
+                {
+                    LogError("Unable to Load Web Page - " + e.Message);
                 }
                 catch (Exception e)
                 {
@@ -202,13 +227,22 @@ namespace WarehouseScraper
             }
         }
 
-        private async static Task UploadImageUsingRestAPI(IElementHandle element, Product product)
+        // Get the hi-res image url from the Playwright element
+        public async static Task<string> GetHiresImageUrl(IElementHandle productElement)
         {
-            // Image URL - get thumbnail url from page, then swap url params to get hi-res version
-            var imgDiv = await element.QuerySelectorAsync(".tile-image");
+            var imgDiv = await productElement.QuerySelectorAsync(".tile-image");
             string? imgUrl = await imgDiv!.GetAttributeAsync("src");
-            imgUrl = imgUrl!.Replace("sw=292&sh=292", "sw=765&sh=765");
 
+            // Check if image is a valid product image
+            if (!imgUrl!.Contains("sw=292&sh=292")) return "";
+
+            // Swap url params to get hi-res version
+            return imgUrl!.Replace("sw=292&sh=292", "sw=765&sh=765");
+        }
+
+        // Image URL - get product image url from page, then upload using an Azure Function
+        public async static Task UploadImageUsingRestAPI(string imgUrl, Product product)
+        {
             // Get AZURE_FUNC_URL from appsettings.json
             // Example format:
             // https://<azurefunc>.azurewebsites.net/api/ImageToS3?code=1234asdf==
@@ -222,23 +256,36 @@ namespace WarehouseScraper
             // Perform http get
             string restUrl = funcUrl + "&filename=" + product.id + "&url=" + imgUrl;
             var response = await httpclient.GetAsync(restUrl);
-            Console.Write(".");
+            var responseMsg = await response.Content.ReadAsStringAsync();
 
-            // Log(
-            //     ConsoleColor.Gray,
-            //     $"New Image: {product.id} {product.name.PadRight(30).Substring(0, 30)} " +
-            // );
+            // Log for successful upload of new image
+            if (responseMsg.Contains("Successfully Converted to Transparent WebP"))
+            {
+                Log(
+                    ConsoleColor.Gray,
+                    $"   New Image: {product.id.PadLeft(10)} | {product.name.PadRight(50).Substring(0, 50)}"
+                );
+            }
+            else if (responseMsg.Contains("already exists"))
+            {
+                // Do not log for existing images
+            }
+            else
+            {
+                // Log any other errors that may have occurred
+                Console.Write(responseMsg);
+            }
             return;
         }
 
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
         //  and then returns a completed Product record
-        private async static Task<Product?> ScrapeProductElementToRecord(IElementHandle element, string url)
+        private async static Task<Product?> ScrapeProductElementToRecord(IElementHandle productElement, string url)
         {
             try
             {
                 // Name
-                var aTag = await element.QuerySelectorAsync("a.link");
+                var aTag = await productElement.QuerySelectorAsync("a.link");
                 string? name = await aTag!.InnerTextAsync();
 
                 // ID
@@ -247,7 +294,7 @@ namespace WarehouseScraper
                 string id = fileName.Split('.').First();               // extract ID from filename
 
                 // Price
-                var priceTag = await element.QuerySelectorAsync("span.now-price");
+                var priceTag = await productElement.QuerySelectorAsync("span.now-price");
                 var priceString = await priceTag!.InnerTextAsync();
                 float currentPrice = float.Parse(priceString.Substring(1));
 
@@ -255,13 +302,13 @@ namespace WarehouseScraper
                 string sourceSite = "thewarehouse.co.nz";
 
                 // Categories
-                string[]? categories = DeriveCategoriesFromUrl(url);
+                string[]? categories = new string[] { DeriveCategoryFromUrl(url, "/food-drink/") };
 
                 // Size
                 string size = ExtractProductSize(name);
 
                 // DatedPrice
-                DateTime todaysDate = DateTime.UtcNow;
+                DateTime todaysDate = DateTime.UtcNow.AddHours(12);    // add 12hrs for NZ time
                 DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
 
                 // Create Price History array with a single element
@@ -284,44 +331,6 @@ namespace WarehouseScraper
                 // Return null if any exceptions occurred during scraping
                 return null;
             }
-        }
-
-        // Shorthand function for logging with colour
-        public static void Log(ConsoleColor color, string text)
-        {
-            Console.ForegroundColor = color;
-            Console.WriteLine(text);
-            Console.ForegroundColor = ConsoleColor.White;
-        }
-
-        // Derives food category names from url, if any categories are available
-        // www.domain.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk
-        // returns '[milk]'
-        public static string[] DeriveCategoriesFromUrl(string url)
-        {
-            // If url doesn't contain /food-drink/, return no category
-            if (url.IndexOf("/food-drink/") > 0)
-            {
-                int categoriesStartIndex = url.IndexOf("/food-drink/");
-                int categoriesEndIndex = url.Contains("?") ? url.IndexOf("?") : url.Length;
-                string categoriesString = url.Substring(categoriesStartIndex, categoriesEndIndex - categoriesStartIndex);
-                string lastCategory = categoriesString.Split("/").Skip(2).Last();
-
-                return new string[] { lastCategory };
-            }
-            else return new string[] { "Uncategorised" };
-        }
-
-        // Extract potential product size from product name
-        // 'Anchor Blue Milk Powder 1kg' returns '1kg'
-        public static string ExtractProductSize(string productName)
-        {
-            // \s = whitespace char, \d = digit, \w+ = 1 more word chars, $ = end
-            string pattern = @"\s\d\w+$";
-
-            string result = "";
-            result = Regex.Match(productName, pattern).ToString().Trim();
-            return result;
         }
 
         private static async Task RoutePlaywrightExclusions(bool logToConsole)
@@ -348,7 +357,7 @@ namespace WarehouseScraper
 
                 if (excludeThisRequest)
                 {
-                    if (logToConsole) Log(ConsoleColor.Red, $"{req.Method} {req.ResourceType} - {trimmedUrl}");
+                    if (logToConsole) LogError($"{req.Method} {req.ResourceType} - {trimmedUrl}");
                     await route.AbortAsync();
                 }
                 else
@@ -359,51 +368,7 @@ namespace WarehouseScraper
             });
         }
 
-        // Reads urls from a txt file, parses urls, and optimises query options for best results
-        private static List<string> ReadURLsFromFile(string fileName)
-        {
-            List<string> urls = new List<string>();
-
-            try
-            {
-                string[] lines = File.ReadAllLines(@fileName);
-
-                if (lines.Length == 0) throw new Exception("No lines found in URLs.txt");
-
-                foreach (string line in lines)
-                {
-                    // If line contains .co.nz it should be a URL
-                    if (line.Contains(".co.nz"))
-                    {
-                        string cleanURL = line;
-                        // If url contains ? it has query options already set
-                        if (line.Contains('?'))
-                        {
-                            // Strip any existing query options off of URL
-                            cleanURL = line.Substring(0, line.IndexOf('?'));
-                        }
-                        // Limit vendor to only the warehouse, not 3rd party sellers
-                        cleanURL += "?prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers";
-
-                        // Add completed url into list
-                        urls.Add(cleanURL);
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                Console.Write(
-                    "Unable to read file " + fileName + "\n" +
-                    "Using Sample URL instead\n"
-                );
-                urls.Add(
-                    "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/spreads"
-                );
-            }
-            return urls;
-        }
-
         private static bool dryRunMode = false;
-
+        private static bool reverseMode = false;
     }
 }
