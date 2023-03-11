@@ -245,21 +245,21 @@ namespace Scraper
         {
             // Get AZURE_FUNC_URL from appsettings.json
             // Example format:
-            // https://<azurefunc>.azurewebsites.net/api/ImageToS3?code=1234asdf==
+            // https://<func-app-name>.azurewebsites.net/api/ImageToS3?code=<func-auth-code>
             string? funcUrl = config.GetRequiredSection("AZURE_FUNC_URL").Get<string>();
 
             // Check funcUrl is valid
             if (!funcUrl!.Contains("http"))
                 throw new Exception("AZURE_FUNC_URL in appsettings.json invalid. Should be in format:\n\n" +
-                "\"AZURE_FUNC_URL\": \"https://<azurefunc>.azurewebsites.net/api/ImageToS3?code=1234asdf==\"");
+                "\"AZURE_FUNC_URL\": \"https://<func-app-name>.azurewebsites.net/api/ImageToS3?code=<func-auth-code>\"");
 
             // Perform http get
-            string restUrl = funcUrl + "&filename=" + product.id + "&url=" + imgUrl;
+            string restUrl = funcUrl + "&destination=s3://supermarketimages/product-images/" + product.id + "&source=" + imgUrl;
             var response = await httpclient.GetAsync(restUrl);
             var responseMsg = await response.Content.ReadAsStringAsync();
 
             // Log for successful upload of new image
-            if (responseMsg.Contains("Successfully Converted to Transparent WebP"))
+            if (responseMsg.Contains("S3 Upload of Full-Size and Thumbnail WebPs"))
             {
                 Log(
                     ConsoleColor.Gray,
@@ -273,7 +273,7 @@ namespace Scraper
             else
             {
                 // Log any other errors that may have occurred
-                Console.Write(responseMsg);
+                Console.Write(restUrl + "\n" + responseMsg);
             }
             return;
         }
