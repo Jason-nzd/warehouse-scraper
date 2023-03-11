@@ -20,7 +20,7 @@ pwsh bin/Debug/net6.0/playwright.ps1 install chromium
 
 If running in dry mode, the program is now ready to use.
 
-If using CosmosDB, create `appsettings.json` containing the endpoint and key using the format:
+If storing data to CosmosDB, create `appsettings.json` containing the endpoint and key using the format:
 
 ```json
 {
@@ -45,6 +45,8 @@ dotnet run
 
 ## Sample Product Stored in CosmosDB
 
+This sample was re-run on multiple days to capture changing prices.
+
 ```json
 {
     "id": "W12345678",
@@ -65,7 +67,7 @@ dotnet run
 
 ## Sample Dry Run Output
 
-```powershell
+```cmd
        ID    Name                                               Price
 ----------------------------------------------------------------------
    R123123   Meadow Fresh Original Homogenised UHT 1L           $3
