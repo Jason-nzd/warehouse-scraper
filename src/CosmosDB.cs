@@ -145,7 +145,7 @@ namespace Scraper
 
                 // Log price change with different verb and colour depending on price change direction
                 bool priceTrendingDown = scrapedProduct.currentPrice < dbProduct!.currentPrice;
-                string priceTrendText = "  Price " + (priceTrendingDown ? "Down" : "Up   ") + ":";
+                string priceTrendText = "  Price " + (priceTrendingDown ? "Down " : "Up   ") + ":";
 
                 Log(priceTrendingDown ? ConsoleColor.Green : ConsoleColor.Red,
                     $"{priceTrendText} {dbProduct.name.PadRight(40).Substring(0, 40)} | " +
