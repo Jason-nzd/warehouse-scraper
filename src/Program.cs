@@ -11,7 +11,7 @@ namespace Scraper
     public class Program
     {
         static int secondsDelayBetweenPageScrapes = 15;
-        static bool uploadImagesToAzureFunc = true;
+        static bool uploadImagesToAzureFunc = false;
 
         public record Product(
             string id,
