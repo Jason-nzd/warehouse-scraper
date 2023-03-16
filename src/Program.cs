@@ -96,7 +96,8 @@ namespace Scraper
 
                     // Query all product card entries
                     var productElements = await playwrightPage.QuerySelectorAllAsync("div.product-tile");
-                    Log(ConsoleColor.Yellow, productElements.Count + " products found");
+                    Log(ConsoleColor.Yellow, $"  {productElements.Count} products found \t\t\t " +
+                    $"Category: {DeriveCategoryFromUrl(urls[i], "/food-drink/")}");
 
                     // Create counters for logging purposes
                     int newCount = 0, priceUpdatedCount = 0, nonPriceUpdatedCount = 0, upToDateCount = 0;
@@ -156,7 +157,7 @@ namespace Scraper
                     if (!dryRunMode)
                     {
                         // Log consolidated CosmosDB stats for entire page scrape
-                        Log(ConsoleColor.Blue, $"\nCosmosDB: {newCount} new products, " +
+                        Log(ConsoleColor.Cyan, $"CosmosDB: {newCount} new products, " +
                         $"{priceUpdatedCount} prices updated, {nonPriceUpdatedCount} info updated, " +
                         $"{upToDateCount} already up-to-date");
                     }
@@ -188,7 +189,7 @@ namespace Scraper
             // Try clean up playwright browser and other resources, then end program
             try
             {
-                Log(ConsoleColor.Blue, "\nScraping Completed \n");
+                Log(ConsoleColor.White, "Scraping Completed \n");
                 await playwrightPage!.Context.CloseAsync();
                 await playwrightPage.CloseAsync();
                 await browser!.CloseAsync();
