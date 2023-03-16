@@ -21,7 +21,8 @@ namespace Scraper
             string[] category,
             string sourceSite,
             DatedPrice[] priceHistory,
-            DateTime lastUpdated
+            DateTime lastUpdated,
+            DateTime lastChecked
         );
         public record DatedPrice(DateTime date, float price);
 
@@ -104,7 +105,7 @@ namespace Scraper
                     foreach (var productElement in productElements)
                     {
                         // Create Product object from playwright element
-                        Product? scrapedProduct = await ScrapeProductElementToRecord(productElement, urls[i]);
+                        Product? scrapedProduct = await PlaywrightElementToProduct(productElement, urls[i]);
 
                         if (!dryRunMode && scrapedProduct != null)
                         {
@@ -244,7 +245,7 @@ namespace Scraper
 
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
         //  and then returns a completed Product record
-        private async static Task<Product?> ScrapeProductElementToRecord(IElementHandle productElement, string url)
+        private async static Task<Product?> PlaywrightElementToProduct(IElementHandle productElement, string url)
         {
             try
             {
@@ -287,6 +288,7 @@ namespace Scraper
                     categories!,
                     sourceSite,
                     priceHistory,
+                    todaysDate,
                     todaysDate
                 );
             }
