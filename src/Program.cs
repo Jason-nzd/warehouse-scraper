@@ -74,7 +74,7 @@ namespace Scraper
                     ParseAndOptimiseURL(
                         url: line,
                         urlShouldContain: "warehouse.co.nz",
-                        replaceQueryParams: "?prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers"
+                        replaceQueryParams: "prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers"
                     );
                 if (validUrl != null) urls.Add(validUrl);
             }
