@@ -96,7 +96,7 @@ namespace Scraper
 
                     // Query all product card entries
                     var productElements = await playwrightPage.QuerySelectorAllAsync("div.product-tile");
-                    Log(ConsoleColor.Yellow, $"  {productElements.Count} products found \t\t\t " +
+                    Log(ConsoleColor.Yellow, $"  {productElements.Count} Products Found \t\t " +
                     $"Category: {DeriveCategoryFromUrl(urls[i], "/food-drink/")}");
 
                     // Create counters for logging purposes
