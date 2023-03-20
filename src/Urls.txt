@@ -5,7 +5,7 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredien
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/oil
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pasta
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pickled-vegetables
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/rice-grains
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/rice-grains categories=rice
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/table-sauces
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/vinegars
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pasta-sauces
@@ -23,7 +23,7 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/baking/ba
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/bread
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/cheese
-https://www.thewarehouse.co.nz/search?q=eggs%20grade&prefn1=marketplaceItem&prefv1=The%20Warehouse
+https://www.thewarehouse.co.nz/search?q=eggs%20grade&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=eggs
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/butter
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/chilled-meats
 
@@ -31,7 +31,7 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ready-to-
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/biscuits
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/chips
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/snack-muesli-bars
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/snack-muesli-bars categories=muesli-bars
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/crackers
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/popcorn
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/nuts
@@ -40,6 +40,6 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/hot-beverages/co
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks
 
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/chocolate-blocks
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/chocolate-share-packs
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/boxed-chocolates
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/chocolate-blocks categories=chocolate,chocolate-blocks
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/chocolate-share-packs categories=chocolate,chocolate-packs
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/boxed-chocolates categories=chocolate,chocolate-packs

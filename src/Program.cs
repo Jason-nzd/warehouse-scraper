@@ -70,41 +70,44 @@ namespace Scraper
             if (lines == null) return;
 
             // Parse and optimise each line into valid urls to be scraped
-            List<string> urls = new List<string>();
+            List<CategorisedURL> categorisedUrls = new List<CategorisedURL>();
             foreach (string line in lines)
             {
-                string? validUrl =
-                    ParseAndOptimiseURL(
-                        url: line,
+                CategorisedURL? categorisedURL =
+                    ParseLineToCategorisedURL(
+                        line,
                         urlShouldContain: "warehouse.co.nz",
-                        replaceQueryParams: "prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers"
+                        replaceQueryParamsWith: "prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers"
                     );
-                if (validUrl != null) urls.Add(validUrl);
+                if (categorisedURL != null) categorisedUrls.Add((CategorisedURL)categorisedURL);
             }
 
             Log(ConsoleColor.Yellow,
-                $"{urls.Count} pages to be scraped, with {secondsDelayBetweenPageScrapes}s delay between page scrape."
+                $"{categorisedUrls.Count} pages to be scraped, with {secondsDelayBetweenPageScrapes}s delay between page scrape."
             );
 
-            // Optionally reverse the order of urls
-            if (reverseMode) urls.Reverse();
+            // Optionally reverse the order of categorisedUrls
+            if (reverseMode) categorisedUrls.Reverse();
 
             // Open up each URL and run the scraping function
-            for (int i = 0; i < urls.Count(); i++)
+            for (int i = 0; i < categorisedUrls.Count(); i++)
             {
                 try
                 {
+                    // Separate out url from categorisedUrl
+                    string url = categorisedUrls[i].url;
+
                     // Log current sequence of page scrapes, the total num of pages to scrape, and shortened url
                     string shortenedUrl =
-                        urls[i]
+                        categorisedUrls[i].url
                         .Replace("https://www.", "")
                         .Replace("prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers", "");
 
                     Log(ConsoleColor.Yellow,
-                        $"\nLoading Page [{i + 1}/{urls.Count()}] {shortenedUrl}");
+                        $"\nLoading Page [{i + 1}/{categorisedUrls.Count()}] {shortenedUrl}");
 
                     // Try load page and wait for full content to dynamically load in
-                    await playwrightPage!.GotoAsync(urls[i]);
+                    await playwrightPage!.GotoAsync(url);
                     await playwrightPage.WaitForSelectorAsync("div.price-lockup-wrapper");
 
                     // Check page title for page not found
@@ -117,7 +120,7 @@ namespace Scraper
                     Log(ConsoleColor.Yellow,
                         $"{productElements.Count} products found \t" +
                         $"Total Time Elapsed: {stopwatch.Elapsed.Minutes}:{stopwatch.Elapsed.Seconds.ToString().PadLeft(2, '0')}\t" +
-                        $"Category: {DeriveCategoryFromUrl(urls[i], urlMustContain: "/food-drink/")}");
+                        $"Categories: {String.Join(", ", categorisedUrls[i].categories)}");
 
                     // Create counters for logging purposes
                     int newCount = 0, priceUpdatedCount = 0, nonPriceUpdatedCount = 0, upToDateCount = 0;
@@ -126,7 +129,11 @@ namespace Scraper
                     foreach (var productElement in productElements)
                     {
                         // Create Product object from playwright element
-                        Product? scrapedProduct = await PlaywrightElementToProduct(productElement, urls[i]);
+                        Product? scrapedProduct = await PlaywrightElementToProduct(
+                            productElement,
+                            url,
+                            categorisedUrls[i].categories
+                        );
 
                         if (!dryRunMode && scrapedProduct != null)
                         {
@@ -197,7 +204,7 @@ namespace Scraper
                 }
 
                 // This page has now completed scraping. A delay is added in-between each subsequent URL
-                if (i != urls.Count() - 1)
+                if (i != categorisedUrls.Count() - 1)
                 {
                     Thread.Sleep(secondsDelayBetweenPageScrapes * 1000);
                 }
@@ -263,7 +270,7 @@ namespace Scraper
 
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
         //  and then returns a completed Product record
-        private async static Task<Product?> PlaywrightElementToProduct(IElementHandle productElement, string url)
+        private async static Task<Product?> PlaywrightElementToProduct(IElementHandle productElement, string url, string[] categories)
         {
             try
             {
@@ -284,9 +291,6 @@ namespace Scraper
                 // Source Website
                 string sourceSite = "thewarehouse.co.nz";
 
-                // Categories
-                string[]? categories = new string[] { DeriveCategoryFromUrl(url, "/food-drink/") };
-
                 // Size
                 string size = ExtractProductSize(name);
 
@@ -303,7 +307,7 @@ namespace Scraper
                     name!,
                     size,
                     currentPrice,
-                    categories!,
+                    categories,
                     sourceSite,
                     priceHistory,
                     todaysDate,
