@@ -7,43 +7,27 @@ namespace ScraperTests
     public class UtilitiesTests
     {
         [TestMethod]
-        public void DeriveCategoryFromUrl_ArrayLengthForUncategorised()
-        {
-            string url = "asdf";
-            var result = DeriveCategoryFromUrl(url, "/food-drink/");
-            Assert.AreEqual<int>(result.Length, 1);
-        }
-
-        [TestMethod]
-        public void DeriveCategoryFromUrl_UncategorisedValue()
-        {
-            string url = "asdf";
-            var result = DeriveCategoryFromUrl(url, "/food-drink/");
-            Assert.AreEqual<string>(result, "Uncategorised");
-        }
-
-        [TestMethod]
-        public void DeriveCategoryFromUrl_ExcludesQueryParameters()
+        public void DeriveCategoryFromURL_ExcludesQueryParameters()
         {
             string url = "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?asdfr=gfd";
-            var result = DeriveCategoryFromUrl(url, "/food-drink/");
+            var result = DeriveCategoryFromURL(url);
             Assert.AreEqual<string>(result, "canned-food");
         }
 
         [TestMethod]
-        public void DeriveCategoryFromUrl_GetsCorrectCategories()
+        public void DeriveCategoryFromURL_GetsCorrectCategories()
         {
             string url =
                 "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/table-sauces";
-            var result = DeriveCategoryFromUrl(url, "/food-drink/");
+            var result = DeriveCategoryFromURL(url);
             Assert.AreEqual<string>(result, "table-sauces");
         }
 
         [TestMethod]
-        public void DeriveCategoryFromUrl_WorksWithoutHttpSlash()
+        public void DeriveCategoryFromURL_WorksWithoutHttpSlash()
         {
             string url = "www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food";
-            var result = DeriveCategoryFromUrl(url, "/food-drink/");
+            var result = DeriveCategoryFromURL(url);
             Assert.AreEqual<string>(result, "canned-food");
         }
 

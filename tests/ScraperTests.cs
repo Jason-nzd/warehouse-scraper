@@ -8,7 +8,7 @@ namespace ScraperTests
     public class ScraperTests
     {
         [TestMethod]
-        public async void Playwright_Connected()
+        public async Task Playwright_Connected()
         {
             // Launch Playwright Browser in headless mode
             var playwright = await Playwright.CreateAsync();
