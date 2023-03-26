@@ -50,9 +50,11 @@ namespace Scraper
                 Log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
             }
 
-            // Establish Playwright browser
+            // Start stopwatch for recording time elapsed
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
+
+            // Establish Playwright browser
             await EstablishPlaywright();
 
             // Connect to CosmosDB - end program if unable to connect
@@ -224,18 +226,19 @@ namespace Scraper
             return;
         }
 
+        // EstablishPlaywright()
         private async static Task EstablishPlaywright()
         {
             try
             {
-                // Launch Playwright Browser in headless mode
+                // Launch chromium browser in headless mode
                 playwright = await Playwright.CreateAsync();
 
                 browser = await playwright.Chromium.LaunchAsync(
                     new BrowserTypeLaunchOptions { Headless = true }
                 );
 
-                // Launch Page 
+                // Launch Page
                 playwrightPage = await browser.NewPageAsync();
 
                 // Route exclusions, such as ads, trackers, etc
