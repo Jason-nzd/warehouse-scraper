@@ -165,8 +165,9 @@ namespace Scraper
         // 'Anchor Blue Milk Powder 1kg' returns '1kg'
         public static string ExtractProductSize(string productName)
         {
-            // \b = word boundary, \d* = 1 or more digits, (g|kg|l|ml) = any of these words
-            string pattern = @"\b\d*(g|kg|l|ml)\b";
+            // \b = word boundary, \d+ = 1 or more digits, \.? optional period., 
+            // (g|kg|l|ml) = any of these words
+            string pattern = @"\b\d+\.?\d+?(g|kg|l|ml)\b";
 
             string result = "";
             result = Regex.Match(productName.ToLower(), pattern).ToString().Trim();
@@ -198,13 +199,35 @@ namespace Scraper
             // Return early if productSize is blank
             if (productSize == null || productSize.Length < 2) return null;
 
-            // Quantity is derived from an already verified product size, 450ml = 450
-            float quantity = float.Parse(Regex.Match(productSize, @"\b\d+").ToString());
+            string? matchedUnit = null;
+            float? quantity = null;
 
-            // MatchedUnit is also derived from product size, 450ml = ml
-            string matchedUnit = Regex.Match(productSize, @"\D+\b").ToString();
+            // If size is simply 'kg', process it as 1kg
+            if (productSize == "kg" || productSize == "per kg")
+            {
+                quantity = 1;
+                matchedUnit = "kg";
+            }
+            else
+            {
+                // MatchedUnit is also derived from product size, 450ml = ml
+                matchedUnit = string.Join("", Regex.Matches(productSize, @"[A-Z]|[a-z]"));
 
-            //Log(ConsoleColor.DarkGreen, productSize + " = (" + quantity.ToString() + ") (" + matchedUnit + ")");
+                // Quantity is derived from product size, 450ml = 450
+                // Can include decimals, 1.5kg = 1.5
+                try
+                {
+                    string quantityMatch = string.Join("", Regex.Matches(productSize, @"(\d|\.)"));
+                    quantity = float.Parse(quantityMatch);
+
+                }
+                catch (System.Exception)
+                {
+                    // If quantity cannot be parsed, the function will return null
+                }
+            }
+
+            //Log(ConsoleColor.DarkGreen, productSize + " = (" + quantity + ") (" + matchedUnit + ")");
 
             if (matchedUnit != null && quantity > 0)
             {
@@ -218,12 +241,6 @@ namespace Scraper
                 //     quantity = multiplier * subUnitSize;
                 // }
 
-                // If size is simply 'kg', process it as 1kg
-                if (productSize == "kg" || productSize == "per kg")
-                {
-                    quantity = 1;
-                    matchedUnit = "kg";
-                }
 
                 // If units are in grams, convert to either /100g for under 500g, or /kg for over
                 if (matchedUnit == "g")
