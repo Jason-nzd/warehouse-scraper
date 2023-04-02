@@ -309,7 +309,7 @@ namespace Scraper
                 // Create Price History array with a single element
                 DatedPrice[] priceHistory = new DatedPrice[] { todaysDatedPrice };
 
-                // Get derived unit price and unit name
+                // Get derived unit price, unit name, original unit quantity
                 string? unitPriceString = DeriveUnitPriceString(size, currentPrice);
                 float? unitPrice = null;
                 string? unitName = "";
