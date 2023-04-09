@@ -171,7 +171,7 @@ namespace Scraper
 
             string result = "";
             result = Regex.Match(productName.ToLower(), pattern).ToString().Trim();
-            Log(ConsoleColor.DarkGreen, result);
+            
             return result.Replace("l", "L").Replace("mL", "ml");
         }
 

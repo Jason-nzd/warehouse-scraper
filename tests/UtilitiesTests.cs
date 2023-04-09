@@ -86,7 +86,5 @@ namespace ScraperTests
             string? unitPriceString = DeriveUnitPriceString("kg", 3f);
             Assert.AreEqual<string>(unitPriceString, "3/kg/1", unitPriceString);
         }
-
-
     }
 }
