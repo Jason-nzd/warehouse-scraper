@@ -301,6 +301,7 @@ namespace Scraper
 
                 // Size
                 string size = ExtractProductSize(name);
+                size = GetOverriddenProductSize(id, size);
 
                 // DatedPrice
                 DateTime todaysDate = DateTime.UtcNow;

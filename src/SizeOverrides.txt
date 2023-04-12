@@ -1,0 +1,5 @@
+# If a product size cannot be scraped, it can manually be specified here.
+# Place product IDs and manually specified product size, one product per line.
+
+R2863396 1L
+R2863395 1L

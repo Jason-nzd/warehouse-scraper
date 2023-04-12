@@ -149,7 +149,7 @@ namespace Scraper
 
                 foreach (string line in lines)
                 {
-                    if (line != null) result.Add(line);
+                    if (line != null && !line.StartsWith("#")) result.Add(line.Trim());
                 }
 
                 return result;
@@ -171,7 +171,7 @@ namespace Scraper
 
             string result = "";
             result = Regex.Match(productName.ToLower(), pattern).ToString().Trim();
-            
+
             return result.Replace("l", "L").Replace("mL", "ml");
         }
 
@@ -188,6 +188,21 @@ namespace Scraper
                 );
             string lastCategory = categoriesString.Split("/").Last();
             return lastCategory;
+        }
+
+        // GetOverriddenProductSize()
+        // ---------------------------
+        // Checks a txt file to see if the product should use a manually overridden size.
+
+        public static string GetOverriddenProductSize(string id, string productSize)
+        {
+            List<string> overrideLines = ReadLinesFromFile("SizeOverrides.txt")!;
+
+            foreach (string line in overrideLines)
+            {
+                if (line.Split(' ')[0] == id) return line.Split(' ')[1];
+            }
+            return productSize;
         }
 
         // DeriveUnitPriceString()

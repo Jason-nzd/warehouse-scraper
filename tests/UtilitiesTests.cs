@@ -9,26 +9,26 @@ namespace ScraperTests
         [TestMethod]
         public void DeriveCategoryFromURL_ExcludesQueryParameters()
         {
-            string url = "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?asdfr=gfd";
+            string url = "https://www.paknsave.co.nz/shop/category/fresh-foods-and-bakery/dairy--eggs/fresh-milk?pg=1&asdf=123f";
             var result = DeriveCategoryFromURL(url);
-            Assert.AreEqual<string>(result, "canned-food");
+            Assert.AreEqual<string>(result, "fresh-milk");
         }
 
         [TestMethod]
         public void DeriveCategoryFromURL_GetsCorrectCategories()
         {
             string url =
-                "https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/table-sauces";
+                "https://www.paknsave.co.nz/shop/category/fresh-foods-and-bakery/dairy--eggs/fresh-milk?pg=1";
             var result = DeriveCategoryFromURL(url);
-            Assert.AreEqual<string>(result, "table-sauces");
+            Assert.AreEqual<string>(result, "fresh-milk");
         }
 
         [TestMethod]
         public void DeriveCategoryFromURL_WorksWithoutHttpSlash()
         {
-            string url = "www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food";
+            string url = "www.paknsave.co.nz/shop/category/fresh-foods-and-bakery/dairy--eggs/fresh-milk?pg=1";
             var result = DeriveCategoryFromURL(url);
-            Assert.AreEqual<string>(result, "canned-food");
+            Assert.AreEqual<string>(result, "fresh-milk");
         }
 
         [TestMethod]
@@ -85,6 +85,20 @@ namespace ScraperTests
         {
             string? unitPriceString = DeriveUnitPriceString("kg", 3f);
             Assert.AreEqual<string>(unitPriceString, "3/kg/1", unitPriceString);
+        }
+
+        [TestMethod]
+        public void GetOverriddenProductSize_Match()
+        {
+            string productSize = GetOverriddenProductSize("R2863396", "");
+            Assert.AreEqual<string>(productSize, "1L");
+        }
+
+        [TestMethod]
+        public void GetOverridenProductSize_NoMatch()
+        {
+            string productSize = GetOverriddenProductSize("P501234", "10 pack");
+            Assert.AreEqual<string>(productSize, "10 pack");
         }
     }
 }
