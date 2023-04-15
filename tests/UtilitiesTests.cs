@@ -95,7 +95,7 @@ namespace ScraperTests
         }
 
         [TestMethod]
-        public void GetOverridenProductSize_NoMatch()
+        public void GetOverriddenProductSize_NoMatch()
         {
             string productSize = GetOverriddenProductSize("P501234", "10 pack");
             Assert.AreEqual<string>(productSize, "10 pack");
