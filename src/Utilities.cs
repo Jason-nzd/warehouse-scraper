@@ -203,8 +203,6 @@ namespace Scraper
 
                 if (unitName == "l") unitName = unitName.Replace("l", "L");
 
-                Log(ConsoleColor.DarkGreen, productName + " > " + total.ToString() + unitName);
-
                 // Return original name '4 x 40ml' as '160ml'
                 return Math.Round(total, 2) + unitName;
             }
