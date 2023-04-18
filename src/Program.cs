@@ -292,9 +292,9 @@ namespace Scraper
                 string id = fileName.Split('.').First();               // extract ID from filename
 
                 // Price
-                var priceTag = await productElement.QuerySelectorAsync("span.now-price");
-                var priceString = await priceTag!.InnerTextAsync();
-                float currentPrice = float.Parse(priceString.Substring(1));
+                var priceTag = await productElement.QuerySelectorAsync("gep-price");
+                var priceString = await priceTag!.GetAttributeAsync("value");
+                float currentPrice = float.Parse(priceString!.Substring(1));
 
                 // Source Website
                 string sourceSite = "thewarehouse.co.nz";
