@@ -208,7 +208,7 @@ namespace Scraper
             }
 
             // Try match '100ml 24pack' or '24 pack 100ml' style names
-            string packPattern = @"(\d+\s?(g|kg|l|ml)\s\d+\s?pack\b|\d+\s?pack\s\d+\s?(g|kg|l|ml))";
+            string packPattern = @"(\d+\s?(l|ml)\s\d+\s?pack\b|\d+\s?pack\s\d+\s?(l|ml))";
             string packResult =
                 Regex.Match(name, packPattern).ToString();
 
@@ -219,21 +219,14 @@ namespace Scraper
                 int packSize = int.Parse(packSizeString.Replace("pack", "").Trim());
 
                 // Match 100ml quantity
-                string quantityString = Regex.Match(packResult, @"\d+\s?(g|kg|l|ml)").ToString();
+                string quantityString = Regex.Match(packResult, @"\d+\s?(l|ml)").ToString();
                 int quantity = int.Parse(Regex.Match(quantityString, @"\d+").ToString());
 
                 // Get unit name
-                string unitName = Regex.Match(packResult, @"(g|kg|l|ml)").ToString();
+                string unitName = Regex.Match(packResult, @"(l|ml)").ToString();
 
                 // Parse to int and multiply together
                 float total = packSize * quantity;
-
-                // If units are in grams, normalize quantity and convert to /kg
-                if (unitName == "g")
-                {
-                    total = total / 1000;
-                    unitName = "kg";
-                }
 
                 // If units are in mL, normalize quantity and convert to /L
                 if (unitName == "ml")
