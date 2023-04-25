@@ -214,7 +214,6 @@ namespace Scraper
 
             if (packResult.Length > 0)
             {
-
                 // Match 24 pack and parse to int
                 string packSizeString = Regex.Match(packResult, @"\d+\s?pack").ToString();
                 int packSize = int.Parse(packSizeString.Replace("pack", "").Trim());
