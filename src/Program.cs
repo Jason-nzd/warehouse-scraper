@@ -303,8 +303,18 @@ namespace Scraper
                 string size = ExtractProductSize(name);
                 size = GetOverriddenProductSize(id, size);
 
-                // DatedPrice
+                // Create a DateTime object for the current time, but set minutes and seconds to zero
                 DateTime todaysDate = DateTime.UtcNow;
+                todaysDate = new DateTime(
+                    todaysDate.Year,
+                    todaysDate.Month,
+                    todaysDate.Day,
+                    todaysDate.Hour,
+                    0,
+                    0
+                );
+
+                // Create a DatedPrice for the current time and price
                 DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
 
                 // Create Price History array with a single element
