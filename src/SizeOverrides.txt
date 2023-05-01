@@ -1,5 +1,5 @@
 # If a product size cannot be scraped, it can manually be specified here.
-# Place product IDs and manually specified product size, one product per line.
+# Place product IDs spaced next to product size, one product per line.
 
 R2863396 1L
 R2863395 1L
@@ -31,3 +31,26 @@ R767330 150g
 R1763857 269g
 R2842100 165g
 R2860681 175g
+R366509 150g
+R2429414 345g
+R2672207 140g
+R990862 185g
+R2672204 140g
+R2634312 127g
+R2837831 411g
+R2470148 187g
+R2837832 444g
+R990861 170g
+R2837830 396g
+R2470150 186g
+R2634316 120g
+R2838085 390g
+R2695821 52g
+R919124 132g
+R2765698 121g
+R1899474 160g
+R2672206 140g
+R2707989 104g
+R2735946 160g
+R2735947 160g
+R2829134 55g
