@@ -1,12 +1,13 @@
 # The Warehouse Scraper
 
-Scrapes product pricing and info from The Warehouse NZ website. Price snapshots can be saved to CosmosDB, or this program can simply log to console.
+Scrapes product pricing and info from the Warehouse NZ website.
+Product information and price snapshots can be stored on Azure CosmosDB, or this program can simply log to console. Images can be sent to an API for resizing, analysis and other processing.
 
-Requires .NET 6 SDK & Powershell. Azure CosmosDB is optional.
+The scraper is powered by `Microsoft Playwright`. It requires `.NET 6 SDK` & `Powershell` to run. Azure CosmosDB is optional.
 
-## Setup
+## Quick Setup
 
-First clone this repo, then restore and build .NET packages with:
+First clone or download this repo, change directory into `/src`, then restore and build .NET packages with:
 
 ```powershell
 dotnet restore && dotnet build
@@ -18,9 +19,15 @@ Playwright Chromium web browser must be downloaded and installed using:
 pwsh bin/Debug/net6.0/playwright.ps1 install chromium
 ```
 
-If running in dry mode, the program is now ready to use.
+If running in dry mode, the program is now ready to use with:
 
-If storing data to CosmosDB, create `appsettings.json` containing the endpoint and key using the format:
+```cmd
+dotnet run dry
+```
+
+## Advanced Setup with appsettings.json
+
+If storing data to `CosmosDB`, create `appsettings.json` containing the endpoint and key using the format:
 
 ```json
 {
@@ -37,10 +44,24 @@ To dry run the scraper, logging each product to the console:
 dotnet run dry
 ```
 
-To run the scraper and save each product to the database:
+To run the scraper with both logging and storing of each product to the database:
 
 ```powershell
 dotnet run
+```
+
+## Sample Dry Run Output
+
+```cmd
+  ID      | Name                                    | Size     | Price | Unit Price
+-------------------------------------------------------------------------------------
+ R254367 | Cola Can Mixed Tray 330ml 24 Pack        | 7.92L    | $ 25  | $3.16 /L
+ R765575 | Cola Tray 330ml 24 Pack                  | 7.92L    | $ 25  | $3.16 /L
+ R884667 | Mixed Tray 99% Sugar Free Soft Drink 24x | 8.4L     | $ 11  | $1.31 /L
+ R987739 | Pop Max Can 355ml 24 Pack                | 8.52L    | $ 20  | $2.35 /L
+ R168505 | Mountain Minis 250ml 10 Pack             | 2.5L     | $  8  | $3.2 /L
+ R909803 | Pop Minis 250ml 10 Pack                  | 2.5L     | $  8  | $3.2 /L
+ R678645 | Cola Zero Sugar Can 24x330ml             | 7.92L    | $ 25  | $3.16 /L
 ```
 
 ## Sample Product Stored in CosmosDB
@@ -49,31 +70,24 @@ This sample was re-run on multiple days to capture changing prices.
 
 ```json
 {
-    "id": "W12345678",
+    "id": "R12445",
     "name": "Puhoi Valley Caramel Milk 300ml",
+    "size": "300ml",
     "currentPrice": 3.6,
+    "category": [
+        "milk"
+    ],
     "priceHistory": [
-       {
-            "date": "Fri Feb 10 2023",
-            "price": 2.9
-       },
-       {
-            "date": "Thu Feb 16 2023",
+        {
+            "date": "2023-02-22T11:00:00Z",
             "price": 3.6
-       },
-    ]
+        }
+        {
+            "date": "2023-01-02T01:00:00Z",
+            "price": 2.99
+        }
+    ],
+    "unitPrice": 12,
+    "unitName": "L",
 }
-```
-
-## Sample Dry Run Output
-
-```cmd
-       ID    Name                                               Price
-----------------------------------------------------------------------
-   R123123   Meadow Fresh Original Homogenised UHT 1L           $3
-  R2342342   Anchor Blue Milk Powder 1kg                        $14.3
-   R345345   Meadow Fresh Lite UHT 1L                           $3
-  R4564566   Cow & Gate Blue Standard Milk 2L                   $3
-  R5675675   Cow & Gate Red Fat Milk Plastic 2L                 $3
-  R6786788   Tararua Dairy Co Protein Hit Chocolate Fresh Flavo $4.6
 ```
