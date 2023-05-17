@@ -3,21 +3,27 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks/juic
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks/sports-energy-drinks categories=energy-drinks
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/asian-foods
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/dressings-mayonnaises
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/dressings-mayonnaises categories=sauces
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/herbs-spices
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/mexican-foods
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/oil
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/oil categories=oils-vinegars
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pasta
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pickled-vegetables
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/rice-grains categories=rice
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/table-sauces
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/vinegars
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pasta-sauces
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/table-sauces categories=sauces
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/vinegars categories=oils-vinegars
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pasta-sauces categories=sauces
 
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=spaghetti&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=baked-beans-spaghetti
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=beans&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=baked-beans-spaghetti
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=tuna&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=canned-fish
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=chicken&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=canned-meat
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=beef&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=canned-meat
 
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/muesli-granola
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/energy-cereal categories=cereal
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/kids-treats categories=cereal
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/light-health-bran-oats categories=cereal
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/muesli-granola categories=cereal
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/spreads
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/baking/sugar
@@ -40,6 +46,8 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/cra
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/popcorn
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/nuts
 
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/sweets-lollies
+
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/hot-beverages/coffee
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/hot-beverages/tea categories=black-tea
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/hot-beverages/drinking-chocolate
@@ -50,6 +58,5 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/choco
 
 https://www.thewarehouse.co.nz/c/food-pets-household/pet-care/cats/cat-food
 https://www.thewarehouse.co.nz/c/food-pets-household/pet-care/cats/cat-treats
-
 https://www.thewarehouse.co.nz/c/food-pets-household/pet-care/dogs/dog-food
 https://www.thewarehouse.co.nz/c/food-pets-household/pet-care/dogs/dog-treats
