@@ -14,11 +14,11 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredien
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/vinegars categories=oils-vinegars
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pasta-sauces categories=sauces
 
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=chicken&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=canned-meat
+https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=beef&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=canned-meat
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=spaghetti&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=beans-spaghetti
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=beans&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=beans-spaghetti
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=tuna&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=canned-fish
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=chicken&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=canned-meat
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/canned-food?q=beef&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=canned-meat
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/energy-cereal categories=cereal
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast-foods/kids-treats categories=cereal
