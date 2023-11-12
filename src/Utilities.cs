@@ -7,11 +7,13 @@ namespace Scraper
     {
         public string url;
         public string[] categories;
+        public int numPages;
 
-        public CategorisedURL(string url, string[] categories)
+        public CategorisedURL(string url, string[] categories, int numPages)
         {
             this.url = url;
             this.categories = categories;
+            this.numPages = numPages;
         }
     }
 
@@ -36,17 +38,38 @@ namespace Scraper
             // Optimise query parameters
             url = OptimiseURLQueryParameters(url, replaceQueryParamsWith);
 
-            // Derive category from url
+            // Derive default product category from url
             string[] categories = { DeriveCategoryFromURL(url) };
 
-            // If overridden categories are provided, override the derived categories
-            string overriddenCategoriesSection = textLine.Split(' ').Last();
-            if (overriddenCategoriesSection.Contains("categories="))
+            // Set default numPages to scrape
+            int numPages = 1;
+
+            // Loop through any parameters placed after the url
+            string[] textLineParams = textLine.Split(' ');
+            for (int i = 1; i < textLineParams.Length; i++)
             {
-                categories = overriddenCategoriesSection.Replace("categories=", "").Split(",");
+                string param = textLineParams[i];
+
+                // If overridden categories are provided, override the derived categories
+                if (param.Contains("categories"))
+                {
+                    categories = param.Replace("categories=", "").Split(",");
+                }
+
+                // Set numPages if specified
+                if (param.Contains("pages"))
+                {
+                    int parsedNumPages = int.Parse(param.Replace("pages=", ""));
+
+                    // Ensure numPages is within reasonable range
+                    if (parsedNumPages >= 1 && parsedNumPages <= 20)
+                    {
+                        numPages = parsedNumPages;
+                    }
+                }
             }
 
-            return new CategorisedURL(url, categories);
+            return new CategorisedURL(url, categories, numPages);
         }
 
         // OptimiseURLQueryParameters
@@ -349,6 +372,18 @@ namespace Scraper
                     quantity = multiplier * subUnitSize;
                     originalUnitQuantity = quantity;
                     matchedUnit = matchedUnit.ToLower().Replace("x", "");
+                    //Log(ConsoleColor.DarkGreen, productSize + " = (" + quantity + ") (" + matchedUnit + ")");
+                }
+
+                // Handle edge case where size is in format '72g each 5pack'
+                matchMultipliedSizeString = Regex.Match(productSize, @"\d+(g|ml)\seach\s\d+pack").ToString();
+                if (matchMultipliedSizeString.Length > 2)
+                {
+                    int multiplier = int.Parse(matchMultipliedSizeString.Split("each")[1].Trim());
+                    int subUnitSize = int.Parse(matchMultipliedSizeString.Split("each")[0].Trim());
+                    quantity = multiplier * subUnitSize;
+                    originalUnitQuantity = quantity;
+                    matchedUnit = matchedUnit.ToLower().Replace("each", "");
                     //Log(ConsoleColor.DarkGreen, productSize + " = (" + quantity + ") (" + matchedUnit + ")");
                 }
 
