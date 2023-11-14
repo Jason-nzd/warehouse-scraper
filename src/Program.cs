@@ -299,7 +299,11 @@ namespace Scraper
 
                 // Size
                 string size = ExtractProductSize(name);
-                size = GetOverriddenProductSize(id, size);
+
+                // Check for manual product data overrides
+                SizeAndCategoryOverride overrides = CheckProductOverrides(id);
+                if (overrides.size != "") size = overrides.size;
+                if (overrides.category != "") categories = new string[] { overrides.category };
 
                 // Create a DateTime object for the current time, but set minutes and seconds to zero
                 DateTime todaysDate = DateTime.UtcNow;

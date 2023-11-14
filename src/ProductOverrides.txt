@@ -1,5 +1,5 @@
-# If a product size cannot be scraped, it can manually be specified here.
-# Place product IDs spaced next to product size, one product per line.
+# If a product size cannot be scraped or is misplaced in the wrong category, these values can be manually overridden here.
+# Place product IDs spaced next to product size and/or category=new-category-name, one product per line.
 
 R2863396 1L
 R2863395 1L
@@ -54,3 +54,6 @@ R2707989 104g
 R2735946 160g
 R2735947 160g
 R2829134 55g
+R2841199 category=sweets-lollies
+R2841200 category=sweets-lollies
+R1624384 category=sweets-lollies
