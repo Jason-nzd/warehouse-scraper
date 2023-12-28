@@ -3,6 +3,7 @@ using Microsoft.Playwright;
 using Microsoft.Extensions.Configuration;
 using static Scraper.CosmosDB;
 using static Scraper.Utilities;
+using Microsoft.Azure.Cosmos.Linq;
 
 // Warehouse Scraper
 // Scrapes product info and pricing from The Warehouse NZ's website.
@@ -275,7 +276,7 @@ namespace Scraper
 
 
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
-        //  and then returns a completed Product record
+        // Returns a completed Product record, or null if invalid
         private async static Task<Product?> PlaywrightElementToProduct(IElementHandle productElement, string url, string[] categories)
         {
             try
@@ -299,6 +300,15 @@ namespace Scraper
 
                 // Size
                 string size = ExtractProductSize(name);
+
+                // Reject products that are in-store only availability
+                var availabilityTag = await productElement.QuerySelectorAsync("div.availability-stock-status");
+                var availability = await availabilityTag!.GetAttributeAsync("data-stock-status");
+                if (availability == "FIND_IN_STORE")
+                {
+                    // Log(ConsoleColor.Red, $"Ignoring {name} - (Out of stock)");
+                    return null;
+                }
 
                 // Check for manual product data overrides
                 SizeAndCategoryOverride overrides = CheckProductOverrides(id);
@@ -351,8 +361,7 @@ namespace Scraper
                 );
 
                 // Validate then return completed product
-                if (IsValidProduct(product))
-                    return (product);
+                if (IsValidProduct(product)) return product;
                 else throw new Exception(product.name);
             }
             catch (Exception e)
