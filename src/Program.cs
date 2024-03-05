@@ -3,7 +3,6 @@ using Microsoft.Playwright;
 using Microsoft.Extensions.Configuration;
 using static Scraper.CosmosDB;
 using static Scraper.Utilities;
-using Microsoft.Azure.Cosmos.Linq;
 
 // Warehouse Scraper
 // Scrapes product info and pricing from The Warehouse NZ's website.
@@ -12,8 +11,11 @@ namespace Scraper
 {
     public class Program
     {
+        // secondsDelayBetweenPageScrapes - use a reasonable value to prevent overloading the server
         static int secondsDelayBetweenPageScrapes = 11;
-        static bool onlyUploadImagesForNewProducts = false;
+
+        // uploadProductImages - will send product images to an Azure Function for processing
+        static bool uploadProductImages = true;
 
         public record Product(
             string id,
@@ -37,7 +39,11 @@ namespace Scraper
         public static IPage? playwrightPage;
         public static HttpClient httpclient = new HttpClient();
 
-        // Get config from appsettings.json
+        // Static variables which are set as command line arguments
+        private static bool dryRunMode = false;
+        private static bool reverseMode = false;
+
+        // Get CosmosDB config entries from appsettings.json
         public static IConfiguration config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .AddEnvironmentVariables()
@@ -45,13 +51,16 @@ namespace Scraper
 
         public static async Task Main(string[] args)
         {
-            // Handle arguments - 'dotnet run dry' will run in dry mode, bypassing CosmosDB
-            //  'dotnet run reverse' will reverse the order that each page is loaded
+            // Handle arguments - 'dotnet run dry' will run in dry mode, bypassing any CosmosDB writes
+            // 'dotnet run reverse' will reverse the order that each page is loaded
             if (args.Length > 0)
             {
-                if (args.Contains("dry")) dryRunMode = true;
+                if (args.Contains("dry"))
+                {
+                    dryRunMode = true;
+                    Log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
+                }
                 if (args.Contains("reverse")) reverseMode = true;
-                Log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
             }
 
             // Start stopwatch for recording time elapsed
@@ -75,7 +84,7 @@ namespace Scraper
             List<string>? lines = ReadLinesFromFile("Urls.txt");
             if (lines == null) return;
 
-            // Parse and optimise each line into valid urls to be scraped
+            // Parse and optimise each line into valid urls
             List<CategorisedURL> categorisedUrls = new List<CategorisedURL>();
             foreach (string line in lines)
             {
@@ -93,7 +102,7 @@ namespace Scraper
                 $"{categorisedUrls.Count} pages to be scraped, with {secondsDelayBetweenPageScrapes}s delay between page scrape."
             );
 
-            // Optionally reverse the order of categorisedUrls
+            // Conditionally reverse the order of categorisedUrls
             if (reverseMode) categorisedUrls.Reverse();
 
             // Open up each URL and run the scraping function
@@ -129,7 +138,7 @@ namespace Scraper
                     // Create counters for logging purposes
                     int newCount = 0, priceUpdatedCount = 0, nonPriceUpdatedCount = 0, upToDateCount = 0;
 
-                    // Loop through every found playwright element
+                    // Loop through each found playwright element
                     foreach (var productElement in productElements)
                     {
                         // Create Product object from playwright element
@@ -164,7 +173,7 @@ namespace Scraper
                                     break;
                             }
 
-                            if (!onlyUploadImagesForNewProducts || response == UpsertResponse.NewProduct)
+                            if (uploadProductImages)
                             {
                                 // Use Azure Function to upload product image
                                 string hiResImageUrl = await GetHiresImageUrl(productElement);
@@ -174,7 +183,7 @@ namespace Scraper
                         }
                         else if (dryRunMode && scrapedProduct != null)
                         {
-                            // In Dry Run mode, print a log row for every product
+                            // In Dry Run mode, print a formatted row for each product
                             string unitString = scrapedProduct.unitPrice != null ?
                                 " | $" + scrapedProduct.unitPrice + " /" + scrapedProduct.unitName : "";
 
@@ -216,7 +225,8 @@ namespace Scraper
                 }
             }
 
-            // Try clean up playwright browser and other resources, then end program
+            // After all pages have been scraped,
+            // clean up playwright browser and other resources, then end program
             try
             {
                 Log(ConsoleColor.White, "Scraping Completed \n");
@@ -249,7 +259,7 @@ namespace Scraper
                 await RoutePlaywrightExclusions(false);
                 return;
             }
-            catch (Microsoft.Playwright.PlaywrightException)
+            catch (PlaywrightException)
             {
                 Log(
                     ConsoleColor.Red,
@@ -260,7 +270,9 @@ namespace Scraper
             }
         }
 
-        // Get the hi-res image url from the Playwright element
+        // GetHiresImageUrl()
+        // ------------------
+        // Get the hi-res image url from a Playwright element
         public async static Task<string> GetHiresImageUrl(IElementHandle productElement)
         {
             var imgDiv = await productElement.QuerySelectorAsync(".tile-image");
@@ -274,7 +286,8 @@ namespace Scraper
         }
 
 
-
+        // PlaywrightElementToProduct()
+        // ----------------------------
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
         // Returns a completed Product record, or null if invalid
         private async static Task<Product?> PlaywrightElementToProduct(IElementHandle productElement, string url, string[] categories)
@@ -372,14 +385,21 @@ namespace Scraper
             }
         }
 
+        // RoutePlaywrightExclusions()
+        // ---------------------------
+        // Routes all requests and aborts any that match the defined exclusions.
+        // Exclusions include ads, trackers, and bandwidth heavy images
+
         private static async Task RoutePlaywrightExclusions(bool logToConsole)
         {
             // Define excluded types and urls to reject
             // Define unnecessary types and ad/tracking urls to reject
             string[] typeExclusions = { "image", "stylesheet", "media", "font", "other" };
-            string[] urlExclusions = { "googleoptimize.com", "gtm.js", "visitoridentification.js", "js-agent.newrelic.com",
-            "cquotient.com", "googletagmanager.com", "cloudflareinsights.com", "dwanalytics", "edge.adobedc.net" };
-            List<string> exclusions = urlExclusions.ToList();
+            List<string> exclusions = new List<string>()
+            {
+                "googleoptimize.com", "gtm.js", "visitoridentification.js","js-agent.newrelic.com",
+                "cquotient.com", "googletagmanager.com", "cloudflareinsights.com", "dwanalytics", "edge.adobedc.net"
+            };
 
             // Route with exclusions processed
             await playwrightPage!.RouteAsync("**/*", async route =>
@@ -406,8 +426,5 @@ namespace Scraper
                 }
             });
         }
-
-        private static bool dryRunMode = false;
-        private static bool reverseMode = false;
     }
 }
