@@ -1,3 +1,6 @@
+// March 6 2024 - The Warehouse no longer categorises most of their food products.
+//  Will wait to see if it's temporary failure or a deliberate change.
+
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks/soft-drinks
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks/juice-cordial categories=juice
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks/sports-energy-drinks categories=energy-drinks
@@ -28,12 +31,13 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/baking/sugar categories=baking
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/baking/flour categories=baking
+https://www.thewarehouse.co.nz/search?q=market%20kitchen%20flour&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=baking
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/baking/baking-needs categories=baking
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/bread
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/cheese
-https://www.thewarehouse.co.nz/search?q=eggs%20grade&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=eggs
+https://www.thewarehouse.co.nz/search?q=farmer%20brown%20eggs&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=eggs
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/butter
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/chilled-meats
 
