@@ -96,7 +96,7 @@ namespace Scraper
             string cleanURL = url;
 
             // If url contains 'search?', keep all query parameters
-            if (url.ToLower().Contains("search?"))
+            if (url.ToLower().Contains("search?") || url.ToLower().Contains("q="))
             {
                 return url;
             }
