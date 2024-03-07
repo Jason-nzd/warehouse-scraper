@@ -1,6 +1,3 @@
-// March 6 2024 - The Warehouse no longer categorises most of their food products.
-//  Will wait to see if it's temporary failure or a deliberate change.
-
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks/soft-drinks
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks/juice-cordial categories=juice
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/cold-drinks/sports-energy-drinks categories=energy-drinks
@@ -11,7 +8,6 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredien
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/mexican-foods categories=world-foods
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/oil categories=oils-vinegars
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pasta
-https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pickled-vegetables
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/rice-grains categories=rice
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/table-sauces categories=sauces
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/vinegars categories=oils-vinegars
@@ -31,7 +27,6 @@ https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/breakfast
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/baking/sugar categories=baking
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/baking/flour categories=baking
-https://www.thewarehouse.co.nz/search?q=market%20kitchen%20flour&prefn1=marketplaceItem&prefv1=The%20Warehouse categories=baking
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/baking/baking-needs categories=baking
 
 https://www.thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/milk-bread/milk
