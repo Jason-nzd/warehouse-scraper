@@ -84,18 +84,41 @@ namespace Scraper
             List<string>? lines = ReadLinesFromFile("Urls.txt");
             if (lines == null) return;
 
-            // Parse and optimise each line into valid urls
-            List<CategorisedURL> categorisedUrls = new List<CategorisedURL>();
-            foreach (string line in lines)
+            // Loop through each text line found in Urls.txt, and only add valid URLs to urlsToScrape.
+            foreach (string line in rawLinesFromTextFile)
             {
+                // Parse each text line, ensuring a product category is found, the URL is valid,
+                // and the number of pages to scrape is determined.
                 CategorisedURL? categorisedURL =
                     ParseLineToCategorisedURL(
                         line,
                         urlShouldContain: "warehouse.co.nz",
-                        replaceQueryParamsWith: "prefn1=marketplaceItem&prefv1=The Warehouse&srule=best-sellers&sz=64"
+                        replaceQueryParamsWith: "prefn1=marketplaceItem&prefv1=The Warehouse"
                     );
 
-                if (categorisedURL != null) categorisedUrls.Add((CategorisedURL)categorisedURL);
+                if (categorisedURL != null)
+                {
+                    // If URL is valid, get the number of pages to scrape through.
+                    int numPages = categorisedURL.Value.numPages;
+
+                    // Add each page as an individual URL to be scraped.
+                    for (int page = 1; page <= numPages; page++)
+                    {
+                        // The Warehouse uses URL query option &start=32 for page2, &start=64 for page3, and so on.
+                        if (page > 1)
+                        {
+                            int productIndex = (page - 1) * 32;
+                            string newUrl = categorisedURL.Value.url + "&start=" + productIndex;
+                            CategorisedURL perPageUrl = new CategorisedURL(newUrl, categorisedURL.Value.categories, -1);
+                            urlsToScrape.Add(perPageUrl);
+                        }
+                        else
+                        {
+                            // For page1, just add the URL as-is.
+                            urlsToScrape.Add(new CategorisedURL(categorisedURL.Value.url, categorisedURL.Value.categories, -1));
+                        }
+                    }
+                }
             }
 
             Log(ConsoleColor.Yellow,
