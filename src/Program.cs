@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Microsoft.Playwright;
 using Microsoft.Extensions.Configuration;
 using static Scraper.CosmosDB;
@@ -314,12 +314,24 @@ namespace Scraper
                 // Size
                 string size = ExtractProductSize(name);
 
-                // Reject products that are in-store only availability
-                var availabilityTag = await productElement.QuerySelectorAsync("div.availability-stock-status");
-                var availability = await availabilityTag!.GetAttributeAsync("data-stock-status");
-                if (availability == "FIND_IN_STORE")
+                // Determine if an in-store only product
+                var availabilityElement = await productElement.QuerySelectorAsync("div.availability-stock-status");
+                var availabilityTag = await availabilityElement!.GetAttributeAsync("data-stock-status");
+                bool isInStoreOnly = availabilityTag == "FIND_IN_STORE";
+
+                // Determine if a clearance product
+                bool isClearance = false;
+                var clearanceImgElement = await productElement.QuerySelectorAsync("img.product-badge-image");
+                if (clearanceImgElement != null)
                 {
-                    // Log(ConsoleColor.Red, $"Ignoring {name} - (Out of stock)");
+                    var clearanceTag = await clearanceImgElement.GetAttributeAsync("src");
+                    isClearance = clearanceTag!.Contains("clearanceUpdate.svg");
+                }
+
+                // Reject hard to find products marked as both clearance and in-store only
+                if (isInStoreOnly && isClearance)
+                {
+                    Log(ConsoleColor.Gray, $"  Ignoring - {name} - (In-store only and clearance product)");
                     return null;
                 }
 
