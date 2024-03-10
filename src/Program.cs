@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Microsoft.Playwright;
 using Microsoft.Extensions.Configuration;
 using static Scraper.CosmosDB;
@@ -63,14 +63,14 @@ namespace Scraper
                 if (args.Contains("reverse")) reverseMode = true;
             }
 
-            // Start stopwatch for recording time elapsed
+            // Start stopwatch - for recording time elapsed.
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            // Establish Playwright browser
+            // Establish Playwright browser.
             await EstablishPlaywright();
 
-            // Connect to CosmosDB - end program if unable to connect
+            // Connect to CosmosDB - end program if unable to connect.
             if (!dryRunMode)
             {
                 if (!await CosmosDB.EstablishConnection(
@@ -80,9 +80,12 @@ namespace Scraper
                    )) return;
             }
 
-            // Read lines from text file - end program if unable to read
-            List<string>? lines = ReadLinesFromFile("Urls.txt");
-            if (lines == null) return;
+            // Read lines from text file - end program if unable to read.
+            List<string>? rawLinesFromTextFile = ReadLinesFromFile("Urls.txt");
+            if (rawLinesFromTextFile == null) return;
+
+            // Create an empty list of URLs to scrape.
+            List<CategorisedURL> urlsToScrape = new List<CategorisedURL>();
 
             // Loop through each text line found in Urls.txt, and only add valid URLs to urlsToScrape.
             foreach (string line in rawLinesFromTextFile)
@@ -122,25 +125,27 @@ namespace Scraper
             }
 
             Log(ConsoleColor.Yellow,
-                $"{categorisedUrls.Count} pages to be scraped, with {secondsDelayBetweenPageScrapes}s delay between page scrape."
+                $"{urlsToScrape.Count} pages to be scraped, with {secondsDelayBetweenPageScrapes}s delay between page scrape."
             );
 
-            // Conditionally reverse the order of categorisedUrls
-            if (reverseMode) categorisedUrls.Reverse();
+            // Conditionally reverse the order of urlsToScrape
+            if (reverseMode) urlsToScrape.Reverse();
 
             // Open up each URL and run the scraping function
-            for (int i = 0; i < categorisedUrls.Count(); i++)
+            for (int i = 0; i < urlsToScrape.Count(); i++)
             {
                 try
                 {
                     // Separate out url from categorisedUrl
-                    string url = categorisedUrls[i].url;
+                    string url = urlsToScrape[i].url;
 
                     // Log current sequence of page scrapes, the total num of pages to scrape, and shortened url
-                    string shortenedUrl = categorisedUrls[i].url.Replace("https://www.", "");
+                    string shortenedUrl = urlsToScrape[i].url
+                        .Replace("https://www.", "")
+                        .Replace("?prefn1=marketplaceItem&prefv1=The Warehouse", "");
 
                     Log(ConsoleColor.Yellow,
-                        $"\nLoading Page [{i + 1}/{categorisedUrls.Count()}] {shortenedUrl}");
+                        $"\nLoading Page [{i + 1}/{urlsToScrape.Count()}] {shortenedUrl}");
 
                     // Try load page and wait for full content to dynamically load in
                     await playwrightPage!.GotoAsync(url);
@@ -156,7 +161,7 @@ namespace Scraper
                     Log(ConsoleColor.Yellow,
                         $"{productElements.Count} products found \t" +
                         $"Total Time Elapsed: {stopwatch.Elapsed.Minutes}:{stopwatch.Elapsed.Seconds.ToString().PadLeft(2, '0')}\t" +
-                        $"Categories: {String.Join(", ", categorisedUrls[i].categories)}");
+                        $"Categories: {String.Join(", ", urlsToScrape[i].categories)}");
 
                     // Create counters for logging purposes
                     int newCount = 0, priceUpdatedCount = 0, nonPriceUpdatedCount = 0, upToDateCount = 0;
@@ -168,7 +173,7 @@ namespace Scraper
                         Product? scrapedProduct = await PlaywrightElementToProduct(
                             productElement,
                             url,
-                            categorisedUrls[i].categories
+                            urlsToScrape[i].categories
                         );
 
                         if (!dryRunMode && scrapedProduct != null)
@@ -242,7 +247,7 @@ namespace Scraper
                 }
 
                 // This page has now completed scraping. A delay is added in-between each subsequent URL
-                if (i != categorisedUrls.Count() - 1)
+                if (i != urlsToScrape.Count() - 1)
                 {
                     Thread.Sleep(secondsDelayBetweenPageScrapes * 1000);
                 }
