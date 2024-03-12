@@ -434,7 +434,7 @@ namespace Scraper
         {
             // Define excluded types and urls to reject
             // Define unnecessary types and ad/tracking urls to reject
-            string[] typeExclusions = { "image", "stylesheet", "media", "font", "other" };
+            string[] typeExclusions = { "stylesheet", "media", "font", "other" };
             List<string> exclusions = new List<string>()
             {
                 "googleoptimize.com", "gtm.js", "visitoridentification.js","js-agent.newrelic.com",
