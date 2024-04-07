@@ -3,7 +3,7 @@
 Scrapes product pricing and info from the Warehouse NZ website.
 Product information and price snapshots can be stored on Azure CosmosDB, or this program can simply log to console. Images can be sent to an API for resizing, analysis and other processing.
 
-The scraper is powered by `Microsoft Playwright`. It requires `.NET 6 SDK` & `Powershell` to run. Azure CosmosDB is optional.
+The scraper is powered by `Microsoft Playwright`. It requires `.NET 6 SDK` & `Powershell` to run. Azure CosmosDB and image processing are optional.
 
 ## Quick Setup
 
@@ -22,7 +22,7 @@ pwsh bin/Debug/net6.0/playwright.ps1 install chromium
 If running in dry mode, the program is now ready to use with:
 
 ```cmd
-dotnet run dry
+dotnet run
 ```
 
 ## Advanced Setup with appsettings.json
@@ -36,18 +36,18 @@ If storing data to `CosmosDB`, create `appsettings.json` containing the endpoint
 }
 ```
 
-## Usage
+## Command-Line Usage
 
 To dry run the scraper, logging each product to the console:
 
 ```powershell
-dotnet run dry
+dotnet run
 ```
 
 To run the scraper with both logging and storing of each product to the database:
 
 ```powershell
-dotnet run
+dotnet run db
 ```
 
 ## Sample Dry Run Output
