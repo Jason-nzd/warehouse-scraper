@@ -490,7 +490,7 @@ namespace Scraper
         // -----
         // Shorthand function for logging with provided colour
 
-        public static void Log(ConsoleColor color, string text)
+        public static void Log(string text, ConsoleColor color = ConsoleColor.White)
         {
             Console.ForegroundColor = color;
             Console.WriteLine(text);
@@ -500,9 +500,21 @@ namespace Scraper
         // LogError()
         // ----------
         // Shorthand function for logging with red colour
+
         public static void LogError(string text)
         {
             Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(text);
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        // LogWarn()
+        // ----------
+        // Shorthand function for logging with yellow colour
+
+        public static void LogWarn(string text)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine(text);
             Console.ForegroundColor = ConsoleColor.White;
         }
