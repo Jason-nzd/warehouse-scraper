@@ -20,99 +20,122 @@ namespace Scraper
     public struct CategorisedURL
     {
         public string url;
-        public string[] categories;
-        public int numPages;
+        public string category;
 
-        public CategorisedURL(string url, string[] categories, int numPages)
+        public CategorisedURL(string url, string category)
         {
             this.url = url;
-            this.categories = categories;
-            this.numPages = numPages;
+            this.category = category;
         }
     }
 
     public partial class Utilities
     {
-        // ParseLineToCategorisedURL()
-        // ---------------------------
-        // Parses a textLine containing a url and optional overridden category names.
-        // Returns a CategorisedURL object or null if the line is invalid.
+        // ParseTexLinesIntoCategorisedURLs()
+        // ----------------------------------
+        // Takes a string array of text lines containing urls and params, 
+        // and parses them into a list of validated and categorised URLs.
 
-        public static CategorisedURL? ParseLineToCategorisedURL(
-            string textLine,
-            string urlShouldContain = ".co.nz",
-            string replaceQueryParamsWith = "")
+        public static List<CategorisedURL> ParseTextLinesIntoCategorisedURLs(
+            List<string> textLines,
+            string urlShouldContain,
+            string replaceQueryParamsWith,
+            string queryOptionForEachPage,
+            int incrementEachPageBy = 1
+        )
         {
+            List<CategorisedURL> categorisedUrls = new List<CategorisedURL>();
 
-            // If line is a comment or empty, return null and skip this
-            if (textLine.StartsWith("#") || textLine.StartsWith("//") || textLine.Length < 4)
+            foreach (string textLine in textLines)
             {
-                return null;
-            }
-
-            // Get url from the first section
-            string url = textLine.Split(' ').First();
-
-            // Ensure URL contains at least the urlShouldContain component
-            if (!url.Contains(urlShouldContain))
-            {
-                Console.WriteLine($"Invalid url: {url}");
-                Console.WriteLine($"Url should contain: {urlShouldContain}");
-                return null;
-            }
-
-            // Optimise query parameters
-            url = OptimiseURLQueryParameters(url, replaceQueryParamsWith);
-
-            // Derive default product category from url
-            string[] categories = { DeriveCategoryFromURL(url) };
-
-            // Set default numPages to scrape
-            int numPages = 1;
-
-            // Loop through any parameters placed after the url
-            string[] textLineParams = textLine.Split(' ');
-            for (int i = 1; i < textLineParams.Length; i++)
-            {
-                string param = textLineParams[i];
-
-                // If overridden category is provided, override the scraped category
-                if (param.Contains("category="))
+                // If textLine is a comment or invalid, skip 
+                if (textLine.StartsWith("#") || textLine.StartsWith("//"))
                 {
-                    categories = new string[] { param.Replace("category=", "") };
                 }
-
-                // Set numPages if specified
-                if (param.Contains("pages="))
+                else if (textLine.Contains(urlShouldContain))
                 {
-                    int parsedNumPages = 1;
+                    // Get url from the first split section
+                    string url = textLine.Split(' ').First();
 
-                    try
+                    // Optimise query parameters
+                    url = OptimiseURLQueryParameters(url, replaceQueryParamsWith);
+
+                    // Derive default product category from url
+                    string category = DeriveCategoryFromURL(url);
+
+                    // Get any parameters placed after the url
+                    string[] textLineParams = textLine.Split(' ');
+                    textLineParams = textLineParams.Skip(1).ToArray();
+
+                    // Default the numPages per url to 1
+                    int numPages = 1;
+
+                    foreach (string param in textLineParams)
                     {
-                        // Try parse pages as an integer
-                        parsedNumPages = int.Parse(param.Replace("pages=", ""));
-
-                        // Ensure parsed numPages is within reasonable range
-                        if (parsedNumPages <= 1 && parsedNumPages >= 20)
+                        // If overridden category is provided, override the scraped category
+                        if (param.Contains("category="))
                         {
-                            throw new Exception();
+                            category = param.Replace("category=", "");
                         }
 
-                        // Set the now validated numPages
-                        numPages = parsedNumPages;
+                        // Override numPages if specified
+                        if (param.Contains("pages="))
+                        {
+                            try
+                            {
+                                numPages = int.Parse(param.Replace("pages=", ""));
+
+                                // Ensure parsed numPages is within reasonable range
+                                if (numPages <= 1 || numPages >= 20)
+                                {
+                                    throw new Exception();
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                // If invalid numPages was specified, reset back to 1
+                                Log("Invalid number of pages: " + numPages);
+                                numPages = 1;
+                            }
+                        }
                     }
 
-                    // If any exceptions occur, log message and return null.
-                    // Returning null allows this line to be skipped.
-                    catch (Exception)
+                    // Add each page as an individual URL to scrape.
+                    for (int page = 1; page <= numPages; page++)
                     {
-                        Console.WriteLine("Invalid number of pages: " + parsedNumPages);
-                        return null;
+                        string newUrl;
+
+                        // For page1, just add the URL as-is.
+                        if (page == 1)
+                        {
+                            newUrl = url;
+                        }
+                        else
+                        {
+                            // For page2 and up, add the specified query option plus the increment to the URL
+
+                            // Examples: pg=2, pg=4, pg=6, etc, or 
+                            int pageIndex = incrementEachPageBy * page;
+
+                            // If incrementEachPageBy uses a high index, multiply by (page-1)
+                            // Examples: page1 = '', page2 = 'start=32', page3 = 'start=64', etc.
+                            if (incrementEachPageBy > 1)
+                            {
+                                pageIndex = incrementEachPageBy * (page - 1);
+                            }
+                            newUrl = url + queryOptionForEachPage + pageIndex.ToString();
+                        }
+
+                        CategorisedURL perPageUrl = new CategorisedURL(
+                            newUrl,
+                            category
+                        );
+                        categorisedUrls.Add(perPageUrl);
                     }
                 }
             }
 
-            return new CategorisedURL(url, categories, numPages);
+            return categorisedUrls;
         }
 
         // OptimiseURLQueryParameters
@@ -124,8 +147,8 @@ namespace Scraper
         {
             string cleanURL = url;
 
-            // If url contains 'search?', keep all query parameters
-            if (url.ToLower().Contains("search?") || url.ToLower().Contains("q="))
+            // If url contains 'search?' or similar search queries, keep all query parameters
+            if (url.ToLower().Contains("search?") || url.ToLower().Contains("f=tags") || url.ToLower().Contains("q="))
             {
                 return url;
             }
@@ -173,18 +196,17 @@ namespace Scraper
             if (responseMsg.Contains("S3 Upload of Full-Size and Thumbnail WebPs"))
             {
                 Log(
-                    ConsoleColor.Gray,
-                    $"  New Image  : {product.id.PadLeft(8)} | {product.name.PadRight(50).Substring(0, 50)}"
+                    $"  New Image  : {product.id,8} | {product.name.PadRight(50).Substring(0, 50)}",
+                    ConsoleColor.Gray
                 );
             }
             else if (responseMsg.Contains("already exists"))
             {
                 // Do not log for existing images
-                // Log(ConsoleColor.Gray, $"  Image {product.id} already exists, skipping...");
             }
             else if (responseMsg.Contains("greyscale"))
             {
-                Log(ConsoleColor.Gray, $"  Image {product.id} is greyscale, skipping...");
+                Log($"  Image {product.id} is greyscale, skipping...", ConsoleColor.Gray);
             }
             else
             {
@@ -204,18 +226,13 @@ namespace Scraper
             {
                 if (product.name.Length < 4 || product.name.Length > 100) return false;
                 if (product.id.Length < 2 || product.id.Length > 20) return false;
-                if (
-                  product.currentPrice <= 0 || product.currentPrice > 999
-                )
-                {
-                    return false;
-                }
-                return true;
+                if (product.currentPrice <= 0 || product.currentPrice > 999) return false;
             }
             catch (Exception)
             {
                 return false;
             }
+            return true;
         }
 
         // ReadLinesFromFile()
@@ -238,7 +255,7 @@ namespace Scraper
 
                 return result;
             }
-            catch (System.Exception)
+            catch (Exception)
             {
                 LogError("Unable to read file " + fileName + "\n");
                 return null;
@@ -345,17 +362,13 @@ namespace Scraper
         public static string DeriveCategoryFromURL(string url)
         {
             int categoriesEndIndex = url.Contains("?") ? url.IndexOf("?") : url.Length;
-            string categoriesString =
-                url.Substring(
-                    0,
-                    categoriesEndIndex
-                );
+            string categoriesString = url.Substring(0, categoriesEndIndex);
             string lastCategory = categoriesString.Split("/").Last();
             return lastCategory;
         }
 
         // CheckProductOverrides()
-        // ---------------------------
+        // -----------------------
         // Checks a txt file to see if the product should use a manually overridden values.
         // Returns a SizeAndCategoryOverride object
 
@@ -376,7 +389,8 @@ namespace Scraper
                     // Then loop through any additional sections
                     for (int i = 1; i < splitLine.Length; i++)
                     {
-                        // If any section matches weight/size/volume symbols, use this size override
+                        // If any section matches weight/size/volume symbols,
+                        // use as size override
                         if (Regex.IsMatch(splitLine[i].ToLower(), @"\d+(g|kg|ml|l)"))
                         {
                             sizeOverrideFound = splitLine[i];
@@ -416,10 +430,10 @@ namespace Scraper
             }
             else
             {
-                // MatchedUnit is derived from product size, 450ml = ml
+                // MatchedUnit is derived from product size tag, 450ml = ml
                 matchedUnit = string.Join("", Regex.Matches(productSize.ToLower(), @"(g|kg|ml|l)\b"));
 
-                // Quantity is derived from product size, 450ml = 450
+                // Quantity is derived from product size tag, 450ml = 450
                 // Can include decimals, 1.5kg = 1.5
                 try
                 {
@@ -427,7 +441,7 @@ namespace Scraper
                     quantity = float.Parse(quantityMatch);
                     originalUnitQuantity = quantity;
                 }
-                catch (System.Exception)
+                catch (Exception)
                 {
                     // If quantity cannot be parsed, the function will return null
                 }
@@ -436,7 +450,8 @@ namespace Scraper
             if (matchedUnit.Length > 0 && quantity > 0)
             {
                 // Handle edge case where size contains a 'multiplier x sub-unit' - eg. 4 x 107mL
-                string matchMultipliedSizeString = Regex.Match(productSize, @"\d+\s?x\s?\d+").ToString();
+                string matchMultipliedSizeString = Regex.Match(
+                    productSize, @"\d+\s?x\s?\d+").ToString();
                 if (matchMultipliedSizeString.Length > 2)
                 {
                     int multiplier = int.Parse(matchMultipliedSizeString.Split("x")[0].Trim());
@@ -448,7 +463,8 @@ namespace Scraper
                 }
 
                 // Handle edge case where size is in format '72g each 5pack'
-                matchMultipliedSizeString = Regex.Match(productSize, @"\d+(g|ml)\seach\s\d+pack").ToString();
+                matchMultipliedSizeString = Regex.Match(
+                    productSize, @"\d+(g|ml)\seach\s\d+pack").ToString();
                 if (matchMultipliedSizeString.Length > 2)
                 {
                     int multiplier = int.Parse(matchMultipliedSizeString.Split("each")[1].Trim());
@@ -478,7 +494,7 @@ namespace Scraper
 
                 // Set per unit price, rounded to 2 decimal points
                 string roundedUnitPrice = Math.Round((decimal)(productPrice / quantity), 2).ToString();
-                //Console.WriteLine(productPrice + " / " + quantity + " = " + roundedUnitPrice + "/" + matchedUnit);
+                //Log(productPrice + " / " + quantity + " = " + roundedUnitPrice + "/" + matchedUnit);
 
                 // Return in format '450g cheese' = '0.45/kg/450'
                 return roundedUnitPrice + "/" + matchedUnit + "/" + originalUnitQuantity;

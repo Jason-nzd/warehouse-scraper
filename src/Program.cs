@@ -5,17 +5,17 @@ using static Scraper.CosmosDB;
 using static Scraper.Utilities;
 
 // Warehouse Scraper
+// -----------------
 // Scrapes product info and pricing from The Warehouse NZ's website.
 
 namespace Scraper
 {
     public class Program
     {
-        // secondsDelayBetweenPageScrapes - use a reasonable value to prevent overloading the server
         static int secondsDelayBetweenPageScrapes = 11;
-
-        // uploadProductImages - will send product images to an Azure Function for processing
-        static bool uploadProductImages = true;
+        static bool uploadToDatabase = false;
+        static bool uploadImages = false;
+        static bool useHeadlessBrowser = true;
 
         public record Product(
             string id,
@@ -39,10 +39,6 @@ namespace Scraper
         public static IPage? playwrightPage;
         public static HttpClient httpclient = new HttpClient();
 
-        // Static variables which are set as command line arguments
-        private static bool dryRunMode = false;
-        private static bool reverseMode = false;
-
         // Get CosmosDB config entries from appsettings.json
         public static IConfiguration config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -51,101 +47,92 @@ namespace Scraper
 
         public static async Task Main(string[] args)
         {
-            // Handle arguments - 'dotnet run dry' will run in dry mode, bypassing any CosmosDB writes
-            // 'dotnet run reverse' will reverse the order that each page is loaded
-            if (args.Length > 0)
+            // Handle command-line arguments 'db', 'images', 'headed'
+            foreach (string arg in args)
             {
-                if (args.Contains("dry"))
+                if (arg.Contains("db"))
                 {
-                    dryRunMode = true;
-                    Log(ConsoleColor.Yellow, $"\n(Dry Run mode on)");
+                    // dotnet run db = will scrape and upload data to a database
+                    uploadToDatabase = true;
+
+                    // Connect to CosmosDB - end program if unable to connect
+                    if (!await CosmosDB.EstablishConnection(
+                        db: "supermarket-prices",
+                        partitionKey: "/name",
+                        container: "products"
+                    )) return;
                 }
-                if (args.Contains("reverse")) reverseMode = true;
+                // dotnet run db custom-query - will run a pre-defined sql query
+                if (arg.Contains("custom-query"))
+                {
+                    await CustomQuery();
+                    return;
+                }
+
+                // dotnet run db images - will scrape, then upload both data and images
+                if (arg.Contains("images"))
+                {
+                    uploadImages = true;
+                }
+
+                if (arg.Contains("headed"))
+                {
+                    useHeadlessBrowser = false;
+                }
+
+                if (arg.Contains("headless"))
+                {
+                    useHeadlessBrowser = true;
+                }
+            }
+            if (!uploadToDatabase)
+            {
+                // dotnet run - will scrape and display results in console
+                LogWarn("(Dry Run Mode)");
             }
 
             // Start stopwatch - for recording time elapsed.
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            // Establish Playwright browser.
-            await EstablishPlaywright();
+            // Establish Playwright browser
+            await EstablishPlaywright(useHeadlessBrowser);
 
-            // Connect to CosmosDB - end program if unable to connect.
-            if (!dryRunMode)
-            {
-                if (!await CosmosDB.EstablishConnection(
-                       db: "supermarket-prices",
-                       partitionKey: "/name",
-                       container: "products"
-                   )) return;
-            }
+            // Read lines from Urls.txt file - end program if unable to read
+            List<string>? lines = ReadLinesFromFile("Urls.txt");
+            if (lines == null) return;
 
-            // Read lines from text file - end program if unable to read.
-            List<string>? rawLinesFromTextFile = ReadLinesFromFile("Urls.txt");
-            if (rawLinesFromTextFile == null) return;
+            // Parse and optimise each line into valid urls to be scraped
+            List<CategorisedURL> categorisedUrls =
+                ParseTextLinesIntoCategorisedURLs(
+                    lines,
+                    urlShouldContain: "warehouse.co.nz",
+                    replaceQueryParamsWith: "prefn1=marketplaceItem&prefv1=The Warehouse",
+                    queryOptionForEachPage: "&start=",
+                    incrementEachPageBy: 32
+                );
 
-            // Create an empty list of URLs to scrape.
-            List<CategorisedURL> urlsToScrape = new List<CategorisedURL>();
-
-            // Loop through each text line found in Urls.txt, and only add valid URLs to urlsToScrape.
-            foreach (string line in rawLinesFromTextFile)
-            {
-                // Parse each text line, ensuring a product category is found, the URL is valid,
-                // and the number of pages to scrape is determined.
-                CategorisedURL? categorisedURL =
-                    ParseLineToCategorisedURL(
-                        line,
-                        urlShouldContain: "warehouse.co.nz",
-                        replaceQueryParamsWith: "prefn1=marketplaceItem&prefv1=The Warehouse"
-                    );
-
-                if (categorisedURL != null)
-                {
-                    // If URL is valid, get the number of pages to scrape through.
-                    int numPages = categorisedURL.Value.numPages;
-
-                    // Add each page as an individual URL to be scraped.
-                    for (int page = 1; page <= numPages; page++)
-                    {
-                        // The Warehouse uses URL query option &start=32 for page2, &start=64 for page3, and so on.
-                        if (page > 1)
-                        {
-                            int productIndex = (page - 1) * 32;
-                            string newUrl = categorisedURL.Value.url + "&start=" + productIndex;
-                            CategorisedURL perPageUrl = new CategorisedURL(newUrl, categorisedURL.Value.categories, -1);
-                            urlsToScrape.Add(perPageUrl);
-                        }
-                        else
-                        {
-                            // For page1, just add the URL as-is.
-                            urlsToScrape.Add(new CategorisedURL(categorisedURL.Value.url, categorisedURL.Value.categories, -1));
-                        }
-                    }
-                }
-            }
-
-            Log(ConsoleColor.Yellow,
-                $"{urlsToScrape.Count} pages to be scraped, with {secondsDelayBetweenPageScrapes}s delay between page scrape."
+            // Log how many pages will be scraped
+            LogWarn(
+                $"{categorisedUrls.Count} pages to be scraped, " +
+                $"with {secondsDelayBetweenPageScrapes}s delay between each page scrape."
             );
 
-            // Conditionally reverse the order of urlsToScrape
-            if (reverseMode) urlsToScrape.Reverse();
-
             // Open up each URL and run the scraping function
-            for (int i = 0; i < urlsToScrape.Count(); i++)
+            for (int i = 0; i < categorisedUrls.Count(); i++)
             {
                 try
                 {
                     // Separate out url from categorisedUrl
-                    string url = urlsToScrape[i].url;
+                    string url = categorisedUrls[i].url;
 
                     // Log current sequence of page scrapes, the total num of pages to scrape, and shortened url
-                    string shortenedUrl = urlsToScrape[i].url
+                    string shortenedUrl = categorisedUrls[i].url
                         .Replace("https://www.", "")
                         .Replace("?prefn1=marketplaceItem&prefv1=The Warehouse", "");
 
-                    Log(ConsoleColor.Yellow,
-                        $"\nLoading Page [{i + 1}/{urlsToScrape.Count()}] {shortenedUrl}");
+                    LogWarn(
+                        $"\nLoading Page [{i + 1}/{categorisedUrls.Count()}] {shortenedUrl}");
 
                     // Try load page and wait for full content to dynamically load in
                     await playwrightPage!.GotoAsync(url);
@@ -158,10 +145,10 @@ namespace Scraper
 
                     // Query all product card entries, and log how many were found
                     var productElements = await playwrightPage.QuerySelectorAllAsync("div.product-tile");
-                    Log(ConsoleColor.Yellow,
+                    LogWarn(
                         $"{productElements.Count} products found \t" +
                         $"Total Time Elapsed: {stopwatch.Elapsed.Minutes}:{stopwatch.Elapsed.Seconds.ToString().PadLeft(2, '0')}\t" +
-                        $"Categories: {String.Join(", ", urlsToScrape[i].categories)}");
+                        $"Categories: {String.Join(" ", categorisedUrls[i].category)}");
 
                     // Create counters for logging purposes
                     int newCount = 0, priceUpdatedCount = 0, nonPriceUpdatedCount = 0, upToDateCount = 0;
@@ -173,10 +160,10 @@ namespace Scraper
                         Product? scrapedProduct = await PlaywrightElementToProduct(
                             productElement,
                             url,
-                            urlsToScrape[i].categories
+                            new string[] { categorisedUrls[i].category }
                         );
 
-                        if (!dryRunMode && scrapedProduct != null)
+                        if (uploadToDatabase && scrapedProduct != null)
                         {
                             // Try upsert to CosmosDB
                             UpsertResponse response = await CosmosDB.UpsertProduct(scrapedProduct);
@@ -201,7 +188,7 @@ namespace Scraper
                                     break;
                             }
 
-                            if (uploadProductImages)
+                            if (uploadImages)
                             {
                                 // Use Azure Function to upload product image
                                 string hiResImageUrl = await GetHiresImageUrl(productElement);
@@ -209,7 +196,7 @@ namespace Scraper
                                     await UploadImageUsingRestAPI(hiResImageUrl, scrapedProduct);
                             }
                         }
-                        else if (dryRunMode && scrapedProduct != null)
+                        else if (!uploadToDatabase && scrapedProduct != null)
                         {
                             // In Dry Run mode, print a formatted row for each product
                             string unitString = scrapedProduct.unitPrice != null ?
@@ -224,12 +211,12 @@ namespace Scraper
                         }
                     }
 
-                    if (!dryRunMode)
+                    if (uploadToDatabase)
                     {
                         // Log consolidated CosmosDB stats for entire page scrape
-                        Log(ConsoleColor.Cyan, $"CosmosDB: {newCount} new products, " +
+                        Log($"CosmosDB: {newCount} new products, " +
                         $"{priceUpdatedCount} prices updated, {nonPriceUpdatedCount} info updated, " +
-                        $"{upToDateCount} already up-to-date");
+                        $"{upToDateCount} already up-to-date", ConsoleColor.Cyan);
                     }
                 }
                 catch (TimeoutException)
@@ -247,7 +234,7 @@ namespace Scraper
                 }
 
                 // This page has now completed scraping. A delay is added in-between each subsequent URL
-                if (i != urlsToScrape.Count() - 1)
+                if (i != categorisedUrls.Count() - 1)
                 {
                     Thread.Sleep(secondsDelayBetweenPageScrapes * 1000);
                 }
@@ -257,7 +244,7 @@ namespace Scraper
             // clean up playwright browser and other resources, then end program
             try
             {
-                Log(ConsoleColor.White, "Scraping Completed \n");
+                Log("Scraping Completed \n");
                 await playwrightPage!.Context.CloseAsync();
                 await playwrightPage.CloseAsync();
                 await browser!.CloseAsync();
@@ -269,7 +256,7 @@ namespace Scraper
         }
 
         // EstablishPlaywright()
-        private async static Task EstablishPlaywright()
+        private async static Task EstablishPlaywright(bool headless)
         {
             try
             {
@@ -277,7 +264,7 @@ namespace Scraper
                 playwright = await Playwright.CreateAsync();
 
                 browser = await playwright.Chromium.LaunchAsync(
-                    new BrowserTypeLaunchOptions { Headless = true }
+                    new BrowserTypeLaunchOptions { Headless = headless }
                 );
 
                 // Launch Page
@@ -289,8 +276,7 @@ namespace Scraper
             }
             catch (PlaywrightException)
             {
-                Log(
-                    ConsoleColor.Red,
+                LogError(
                     "Browser must be manually installed using: \n" +
                     "pwsh bin/Debug/net6.0/playwright.ps1 install\n"
                 );
@@ -303,6 +289,7 @@ namespace Scraper
         // Get the hi-res image url from a Playwright element
         public async static Task<string> GetHiresImageUrl(IElementHandle productElement)
         {
+            // Image URL
             var imgDiv = await productElement.QuerySelectorAsync(".tile-image");
             string? imgUrl = await imgDiv!.GetAttributeAsync("src");
 
@@ -313,12 +300,16 @@ namespace Scraper
             return imgUrl!.Replace("sw=292&sh=292", "sw=765&sh=765");
         }
 
-
         // PlaywrightElementToProduct()
         // ----------------------------
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
         // Returns a completed Product record, or null if invalid
-        private async static Task<Product?> PlaywrightElementToProduct(IElementHandle productElement, string url, string[] categories)
+
+        private async static Task<Product?> PlaywrightElementToProduct(
+            IElementHandle productElement,
+            string url,
+            string[] categories
+        )
         {
             try
             {
@@ -359,7 +350,7 @@ namespace Scraper
                 // Reject hard to find products marked as both clearance and in-store only
                 if (isInStoreOnly && isClearance)
                 {
-                    Log(ConsoleColor.Gray, $"  Ignoring - {name} - (In-store only and clearance product)");
+                    Log($"  Ignoring - {name} - (In-store only and clearance product)", ConsoleColor.Gray);
                     return null;
                 }
 
@@ -419,7 +410,7 @@ namespace Scraper
             }
             catch (Exception e)
             {
-                Log(ConsoleColor.Red, $"Price scrape error: " + e.Message);
+                LogError($"Price scrape error: " + e.Message);
                 // Return null if any exceptions occurred during scraping
                 return null;
             }
@@ -461,7 +452,7 @@ namespace Scraper
                 }
                 else
                 {
-                    if (logToConsole) Log(ConsoleColor.White, $"{req.Method} {req.ResourceType} - {trimmedUrl}");
+                    if (logToConsole) Log($"{req.Method} {req.ResourceType} - {trimmedUrl}");
                     await route.ContinueAsync();
                 }
             });
