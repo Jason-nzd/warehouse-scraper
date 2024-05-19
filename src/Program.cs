@@ -41,9 +41,10 @@ namespace Scraper
 
         // Get CosmosDB config entries from appsettings.json
         public static IConfiguration config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddEnvironmentVariables()
-            .Build();
+           .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true) //load base settings
+           .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true) //load local settings
+           .AddEnvironmentVariables()
+           .Build();
 
         public static async Task Main(string[] args)
         {

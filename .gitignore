@@ -1,14 +1,12 @@
 /.vscode
 /.vs
+/src/.vs
 
-/src/bin
-/src/obj
+/*/bin
+/*/obj
 
 /TestResults
-/tests/bin
-/tests/obj
 
-/src/appsettings.json
 /src/appsettings.local.json
 
 *.bat
