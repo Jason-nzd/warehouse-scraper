@@ -57,3 +57,4 @@ R2829134 55g
 R2841199 category=sweets-lollies
 R2841200 category=sweets-lollies
 R1624384 category=sweets-lollies
+R921189 250g

@@ -315,23 +315,26 @@ namespace Scraper
             try
             {
                 // Name
+                // the first a.link always contains the product name
                 var aTag = await productElement.QuerySelectorAsync("a.link");
                 string? name = await aTag!.InnerTextAsync();
 
                 // ID
-                var linkHref = await aTag.GetAttributeAsync("href");   // get href to product page
+                // the a.link from above has an href pointing to /ID.html
+                var linkHref = await aTag.GetAttributeAsync("href");   // get href
                 var fileName = linkHref!.Split('/').Last();            // get filename ending in .html
                 string id = fileName.Split('.').First();               // extract ID from filename
 
                 // Price
-                var priceTag = await productElement.QuerySelectorAsync("gep-price");
-                var priceString = await priceTag!.GetAttributeAsync("value");
-                float currentPrice = float.Parse(priceString!.Substring(1));
+                // the first div.price contains the product price
+                var priceTag = await productElement.QuerySelectorAsync("div.price");
+                var priceString = await priceTag!.InnerTextAsync();
+                float currentPrice = float.Parse(priceString!.Substring(1)); // remove $ sign and parse to float
 
                 // Source Website
                 string sourceSite = "thewarehouse.co.nz";
 
-                // Size
+                // Size - is derived from the product name
                 string size = ExtractProductSize(name);
 
                 // Determine if an in-store only product
@@ -371,7 +374,7 @@ namespace Scraper
                     0
                 );
 
-                // Create a DatedPrice for the current time and price
+                // Create a DatedPrice object for the current time and price
                 DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
 
                 // Create Price History array with a single element
