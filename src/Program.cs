@@ -107,7 +107,7 @@ namespace Scraper
             List<CategorisedURL> categorisedUrls =
                 ParseTextLinesIntoCategorisedURLs(
                     lines,
-                    urlShouldContain: "warehouse.co.nz",
+                    urlShouldContain: "thewarehouse.co.nz",
                     replaceQueryParamsWith: "prefn1=marketplaceItem&prefv1=The Warehouse",
                     queryOptionForEachPage: "&start=",
                     incrementEachPageBy: 32
@@ -129,8 +129,8 @@ namespace Scraper
 
                     // Log current sequence of page scrapes, the total num of pages to scrape, and shortened url
                     string shortenedUrl = categorisedUrls[i].url
-                        .Replace("https://www.", "")
-                        .Replace("?prefn1=marketplaceItem&prefv1=The Warehouse", "");
+                    .Replace("https://www.", "")
+                    .Replace("?prefn1=marketplaceItem&prefv1=The Warehouse", "");
 
                     LogWarn(
                         $"\nLoading Page [{i + 1}/{categorisedUrls.Count()}] {shortenedUrl}");

@@ -126,10 +126,14 @@ namespace Scraper
                             newUrl = url + queryOptionForEachPage + pageIndex.ToString();
                         }
 
+                        // Ensure https://www. is used
+                        newUrl = "https://www." + newUrl.Substring(newUrl.IndexOf(urlShouldContain));
+
                         CategorisedURL perPageUrl = new CategorisedURL(
                             newUrl,
                             category
                         );
+
                         categorisedUrls.Add(perPageUrl);
                     }
                 }
