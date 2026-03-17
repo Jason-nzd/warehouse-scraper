@@ -17,22 +17,6 @@ namespace Scraper
         static bool uploadImages = false;
         static bool useHeadlessBrowser = true;
 
-        public record Product(
-            string id,
-            string name,
-            string? size,
-            float currentPrice,
-            string[] category,
-            string sourceSite,
-            DatedPrice[] priceHistory,
-            DateTime lastUpdated,
-            DateTime lastChecked,
-            float? unitPrice,
-            string? unitName,
-            float? originalUnitQuantity
-        );
-        public record DatedPrice(DateTime date, float price);
-
         // Singletons for Playwright
         public static IPlaywright? playwright;
         public static IBrowser? browser;
@@ -41,7 +25,7 @@ namespace Scraper
 
         // Get CosmosDB config entries from appsettings.json
         public static IConfiguration config = new ConfigurationBuilder()
-           .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true) //load base settings
+           .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)      //load base settings
            .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true) //load local settings
            .AddEnvironmentVariables()
            .Build();
@@ -56,18 +40,8 @@ namespace Scraper
                     // dotnet run db = will scrape and upload data to a database
                     uploadToDatabase = true;
 
-                    // Connect to CosmosDB - end program if unable to connect
-                    if (!await CosmosDB.EstablishConnection(
-                        db: "supermarket-prices",
-                        partitionKey: "/name",
-                        container: "products"
-                    )) return;
-                }
-                // dotnet run db custom-query - will run a pre-defined sql query
-                if (arg.Contains("custom-query"))
-                {
-                    await CustomQuery();
-                    return;
+                    // Connect to CosmosDB
+                    await CosmosDB.EstablishConnection();
                 }
 
                 // dotnet run db images - will scrape, then upload both data and images
@@ -130,7 +104,7 @@ namespace Scraper
                     // Log current sequence of page scrapes, the total num of pages to scrape, and shortened url
                     string shortenedUrl = categorisedUrls[i].url
                     .Replace("https://www.", "")
-                    .Replace("?prefn1=marketplaceItem&prefv1=The Warehouse", "");
+                    .Replace("prefn1=marketplaceItem&prefv1=The Warehouse", "");
 
                     LogWarn(
                         $"\nLoading Page [{i + 1}/{categorisedUrls.Count()}] {shortenedUrl}");
@@ -158,16 +132,12 @@ namespace Scraper
                     foreach (var productElement in productElements)
                     {
                         // Create Product object from playwright element
-                        Product? scrapedProduct = await PlaywrightElementToProduct(
-                            productElement,
-                            url,
-                            new string[] { categorisedUrls[i].category }
-                        );
+                        Product? scrapedProduct = await DOMElementToProduct(productElement, categorisedUrls[i].category);
 
                         if (uploadToDatabase && scrapedProduct != null)
                         {
                             // Try upsert to CosmosDB
-                            UpsertResponse response = await CosmosDB.UpsertProduct(scrapedProduct);
+                            UpsertResponse response = await CosmosDB.TransformAndUpsertProduct(scrapedProduct);
 
                             // Increment stats counters based on response from CosmosDB
                             switch (response)
@@ -199,15 +169,21 @@ namespace Scraper
                         }
                         else if (!uploadToDatabase && scrapedProduct != null)
                         {
-                            // In Dry Run mode, print a formatted row for each product
-                            string unitString = scrapedProduct.unitPrice != null ?
-                                " | $" + scrapedProduct.unitPrice + " /" + scrapedProduct.unitName : "";
+                            // In Dry Run mode, prepare a log row for every product
 
+                            // logUnitPrice is either blank or "$ + {unitPrice}"
+                            string logUnitPrice = "";
+                            if (scrapedProduct.unitPrice != null)
+                                if (scrapedProduct.unitPrice != "")
+                                    logUnitPrice = "$ " + scrapedProduct.unitPrice;
+
+                            // Log completed row entry
                             Console.WriteLine(
                                 scrapedProduct!.id.PadLeft(9) + " | " +
                                 scrapedProduct.name!.PadRight(60).Substring(0, 60) + " | " +
-                                scrapedProduct.size!.PadRight(8) + " | $" +
-                                scrapedProduct.currentPrice.ToString().PadLeft(5) + unitString
+                                scrapedProduct.size!.PadRight(10) + " | $" +
+                                scrapedProduct.currentPrice.ToString().PadLeft(5) + " | " +
+                                logUnitPrice
                             );
                         }
                     }
@@ -301,15 +277,14 @@ namespace Scraper
             return imgUrl!.Replace("sw=292&sh=292", "sw=765&sh=765");
         }
 
-        // PlaywrightElementToProduct()
+        // DOMElementToProduct()
         // ----------------------------
         // Takes a playwright element "div.product-tile", scrapes each of the desired data fields,
         // Returns a completed Product record, or null if invalid
 
-        private async static Task<Product?> PlaywrightElementToProduct(
+        private async static Task<Product?> DOMElementToProduct(
             IElementHandle productElement,
-            string url,
-            string[] categories
+            string category
         )
         {
             try
@@ -361,52 +336,21 @@ namespace Scraper
                 // Check for manual product data overrides
                 SizeAndCategoryOverride overrides = CheckProductOverrides(id);
                 if (overrides.size != "") size = overrides.size;
-                if (overrides.category != "") categories = new string[] { overrides.category };
-
-                // Create a DateTime object for the current time, but set minutes and seconds to zero
-                DateTime todaysDate = DateTime.UtcNow;
-                todaysDate = new DateTime(
-                    todaysDate.Year,
-                    todaysDate.Month,
-                    todaysDate.Day,
-                    todaysDate.Hour,
-                    0,
-                    0
-                );
-
-                // Create a DatedPrice object for the current time and price
-                DatedPrice todaysDatedPrice = new DatedPrice(todaysDate, currentPrice);
-
-                // Create Price History array with a single element
-                DatedPrice[] priceHistory = new DatedPrice[] { todaysDatedPrice };
+                if (overrides.category != "") category = overrides.category;
 
                 // Get derived unit price, unit name, original unit quantity
-                string? unitPriceString = DeriveUnitPriceString(size, currentPrice);
-                float? unitPrice = null;
-                string? unitName = "";
-                float? originalUnitQuantity = null;
-                if (unitPriceString != null)
-                {
-                    unitPrice = float.Parse(unitPriceString.Split("/")[0]);
-                    unitName = unitPriceString.Split("/")[1];
-                    originalUnitQuantity = float.Parse(unitPriceString.Split("/")[2]);
-                }
+                string unitPrice = DeriveUnitPriceString(size, currentPrice) ?? "";
 
                 // Create product record with above values
                 Product product = new Product(
-                    id,
-                    name!,
-                    size,
-                    currentPrice,
-                    categories,
-                    sourceSite,
-                    priceHistory,
-                    todaysDate,
-                    todaysDate,
-                    unitPrice,
-                    unitName,
-                    originalUnitQuantity
-                );
+                     id: id,
+                     name: name,
+                     size: size,
+                     category: category,
+                     sourceSite: sourceSite,
+                     currentPrice: currentPrice,
+                     unitPrice: unitPrice
+                 );
 
                 // Validate then return completed product
                 if (IsValidProduct(product)) return product;

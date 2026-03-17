@@ -1,5 +1,5 @@
 # List of all URLs to be scraped (based off original Warehouse categories as of Oct-2025)
-# --------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
 # Not all products are scraped. Only popular categories are to save time.
 # Add pages=2 or similiar to scrape more pages per category.
 # Add category=name to replace the category if storing to a database.
@@ -8,7 +8,7 @@
 ## Ingredients, Sauces & Oils
 thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/asian-foods category=world-foods
 thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/dressings-mayonnaises category=sauces
-thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/herbs-spices category=sauces
+thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/herbs-spices category=herbs-spices
 thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/mexican-foods category=world-foods
 thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/oil category=oils-vinegars
 thewarehouse.co.nz/c/food-pets-household/food-drink/pantry/ingredients-sauces-oils/pasta
@@ -52,7 +52,7 @@ thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/popcorn categor
 thewarehouse.co.nz/c/food-pets-household/food-drink/chips-snacks/nuts category=nuts-bulk-mix
 
 # Chocolates
-thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/chocolate-share-packs category=boxed-chocolate
+thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/chocolate-share-packs category=chocolate
 thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/boxed-chocolates category=boxed-chocolate pages=3
 thewarehouse.co.nz/c/food-pets-household/food-drink/chocolates/chocolate-blocks category=chocolate pages=2
 

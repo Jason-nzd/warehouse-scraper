@@ -41,7 +41,7 @@ namespace Scraper
             string urlShouldContain,
             string replaceQueryParamsWith,
             string queryOptionForEachPage,
-            int incrementEachPageBy = 1
+            int incrementEachPageBy = 1 // could be pg=1, pg=2, or items=32, items=64, etc.
         )
         {
             List<CategorisedURL> categorisedUrls = new List<CategorisedURL>();
@@ -54,6 +54,7 @@ namespace Scraper
                 }
                 else if (textLine.Contains(urlShouldContain))
                 {
+                    // Sample textLine = website.co.nz/category/bakery/sliced-bread category=bread pages=2
                     // Get url from the first split section
                     string url = textLine.Split(' ').First();
 
@@ -64,13 +65,13 @@ namespace Scraper
                     string category = DeriveCategoryFromURL(url);
 
                     // Get any parameters placed after the url
-                    string[] textLineParams = textLine.Split(' ');
-                    textLineParams = textLineParams.Skip(1).ToArray();
+                    string[] additionalParams = textLine.Split(' ');
+                    additionalParams = additionalParams.Skip(1).ToArray();
 
-                    // Default the numPages per url to 1
+                    // Default the numPages to scrape per url to 1
                     int numPages = 1;
 
-                    foreach (string param in textLineParams)
+                    foreach (string param in additionalParams)
                     {
                         // If overridden category is provided, override the scraped category
                         if (param.Contains("category="))
@@ -112,7 +113,7 @@ namespace Scraper
                         }
                         else
                         {
-                            // For page2 and up, add the specified query option plus the increment to the URL
+                            // For page2 and up, add the associated query option plus the increment to the URL
 
                             // Examples: pg=2, pg=4, pg=6, etc, or 
                             int pageIndex = incrementEachPageBy * page;
@@ -126,14 +127,10 @@ namespace Scraper
                             newUrl = url + queryOptionForEachPage + pageIndex.ToString();
                         }
 
-                        // Ensure https://www. is used
-                        newUrl = "https://www." + newUrl.Substring(newUrl.IndexOf(urlShouldContain));
-
                         CategorisedURL perPageUrl = new CategorisedURL(
                             newUrl,
                             category
                         );
-
                         categorisedUrls.Add(perPageUrl);
                     }
                 }
@@ -149,10 +146,12 @@ namespace Scraper
 
         public static string OptimiseURLQueryParameters(string url, string replaceQueryParamsWith)
         {
-            string cleanURL = url;
+            // Ensure https:// is at the start
+            url = url.Replace("http://", "https://");
+            if (!url.Contains("https://")) url = "https://" + url;
 
             // If url contains 'search?' or similar search queries, keep all query parameters
-            if (url.ToLower().Contains("search?") || url.ToLower().Contains("f=tags") || url.ToLower().Contains("q="))
+            if (Regex.Match(url.ToLower(), @"(search\?|f\=tags|q\=|refinementlist)").Success)
             {
                 return url;
             }
@@ -160,19 +159,19 @@ namespace Scraper
             // Else strip all query parameters
             else if (url.Contains('?'))
             {
-                cleanURL = url.Substring(0, url.IndexOf('?')) + "?";
+                url = url.Substring(0, url.IndexOf('?')) + "?";
             }
 
             // If there were no existing query parameters, ensure a ? is added
-            else cleanURL += "?";
+            else url += "?";
 
             // Replace query parameters with optimised ones,
             //  such as limiting to certain sellers,
             //  or showing a higher number of products
-            cleanURL += replaceQueryParamsWith;
+            url += replaceQueryParamsWith;
 
             // Return cleaned url
-            return cleanURL;
+            return url;
         }
 
         // UploadImageUsingRestAPI()
@@ -184,7 +183,7 @@ namespace Scraper
             // Get AZURE_FUNC_URL from appsettings.json
             // Example format:
             // https://<func-app-name>.azurewebsites.net/api/ImageToS3?code=<func-auth-code>&destination=s3://<bucket>/<optional-path>/
-            string? funcUrl = config!.GetSection("AZURE_FUNC_URL").Value;
+            string? funcUrl = config!.GetSection("IMAGE_PROCESS_API_URL").Value;
 
             // Check funcUrl is valid
             if (!funcUrl!.Contains("http"))
@@ -365,10 +364,18 @@ namespace Scraper
 
         public static string DeriveCategoryFromURL(string url)
         {
-            int categoriesEndIndex = url.Contains("?") ? url.IndexOf("?") : url.Length;
-            string categoriesString = url.Substring(0, categoriesEndIndex);
-            string lastCategory = categoriesString.Split("/").Last();
-            return lastCategory;
+            // If a search url is used, use the search parameter as the category
+            if (url.Contains("search?"))
+            {
+                return url.Substring(url.IndexOf("q=") + 2);
+            }
+            else
+            {
+                int categoriesEndIndex = url.Contains("?") ? url.IndexOf("?") : url.Length;
+                string categoriesString = url.Substring(0, categoriesEndIndex);
+                string lastCategory = categoriesString.Split("/").Last();
+                return lastCategory;
+            }
         }
 
         // CheckProductOverrides()
@@ -500,8 +507,8 @@ namespace Scraper
                 string roundedUnitPrice = Math.Round((decimal)(productPrice / quantity), 2).ToString();
                 //Log(productPrice + " / " + quantity + " = " + roundedUnitPrice + "/" + matchedUnit);
 
-                // Return in format '450g cheese' = '0.45/kg/450'
-                return roundedUnitPrice + "/" + matchedUnit + "/" + originalUnitQuantity;
+                // Return in format '450g cheese' = '0.45/kg'
+                return roundedUnitPrice + "/" + matchedUnit;
             }
             return null;
         }
